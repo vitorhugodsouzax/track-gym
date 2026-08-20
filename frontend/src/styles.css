@@ -219,3 +219,25 @@ input, select {
   h1 { font-size: 2rem; }
   .set-fields, .composer-set { grid-template-columns: 1fr 1fr; }
 }
+
+.hit-target { color: var(--accent); font-size: 0.75rem; white-space: nowrap; }
+
+.summary-row, .history-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+.summary-row { background: none; border: 0; padding: 8px 0; border-bottom: 1px solid var(--line); border-radius: 0; }
+
+.sparkline { color: var(--accent); display: block; margin-top: 4px; }
+
+.history-search {
+  width: 100%;
+}
