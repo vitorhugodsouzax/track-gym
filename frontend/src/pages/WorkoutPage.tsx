@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ExerciseCard, type ExerciseDraft } from '../components/ExerciseCard';
-import { ClockIcon } from '../components/Icons';
+import { ChevronLeftIcon, ClockIcon } from '../components/Icons';
 import { completeSession, getWorkouts } from '../services/api';
 import type { WorkoutDay, WorkoutPlan, WorkoutSessionRecord } from '../types/api';
 
@@ -34,17 +34,13 @@ export function WorkoutPage({ onNeedPlan, onFinished }: { onNeedPlan: () => void
 
   useEffect(() => {
     getWorkouts()
-      .then((plans) => {
-        const next = plans[0];
-        setPlan(next);
-        setSelected(next?.workoutDays[0]);
-      })
+      .then((plans) => setPlan(plans[0]))
       .catch((reason: Error) => setError(reason.message))
       .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
-    if (!plan || summary) return;
+    if (!selected || summary) return;
     let start = Number(sessionStorage.getItem(TIMER_KEY));
     if (!start) {
       start = Date.now();
@@ -54,7 +50,16 @@ export function WorkoutPage({ onNeedPlan, onFinished }: { onNeedPlan: () => void
     tick();
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
-  }, [plan, summary]);
+  }, [selected, summary]);
+
+  function startDay(day: WorkoutDay) {
+    setDrafts({});
+    setSelected(day);
+  }
+
+  function backToList() {
+    setSelected(undefined);
+  }
 
   const subtitle = useMemo(() => plan?.kind === 'VITOR' ? 'Workouts Vitor' : plan?.name ?? 'Treino', [plan]);
 
@@ -127,18 +132,35 @@ export function WorkoutPage({ onNeedPlan, onFinished }: { onNeedPlan: () => void
     }
   }
 
+  if (!selected) {
+    return (
+      <section className="stack">
+        <header className="page-hero">
+          <p className="eyebrow">{subtitle}</p>
+          <h1>Minhas rotinas</h1>
+        </header>
+        {plan.workoutDays.map((day) => (
+          <article className="log-card" key={day.id}>
+            <strong>{day.name}</strong>
+            <p className="muted">{day.exercises.map((exercise) => exercise.name).join(', ') || 'Sem exercícios ainda.'}</p>
+            <button className="primary" onClick={() => startDay(day)} disabled={day.exercises.length === 0}>Iniciar rotina</button>
+          </article>
+        ))}
+      </section>
+    );
+  }
+
   return (
     <section className="stack">
       <header className="workout-action-bar">
-        <span>{selected?.name ?? 'Treino'}</span>
+        <button aria-label="Voltar" className="icon-button" onClick={backToList}>
+          <ChevronLeftIcon />
+        </button>
+        <span>{selected.name}</span>
         <span className="workout-timer"><ClockIcon /> {formatElapsed(elapsedSeconds)}</span>
-        <button className="primary compact" disabled={!selected || busy} onClick={finish}>
+        <button className="primary compact" disabled={busy} onClick={finish}>
           {busy ? 'Salvando…' : 'Concluir'}
         </button>
-      </header>
-      <header className="page-hero">
-        <p className="eyebrow">{subtitle}</p>
-        <p>Informe a carga de trabalho. O app calcula Feeders, Top Set e Back Off quando existirem na ficha.</p>
       </header>
       <div className="stats-row">
         <div>
@@ -154,14 +176,7 @@ export function WorkoutPage({ onNeedPlan, onFinished }: { onNeedPlan: () => void
           <span>Séries</span>
         </div>
       </div>
-      <nav className="day-tabs">
-        {plan.workoutDays.map((day) => (
-          <button className={selected?.id === day.id ? 'active' : ''} key={day.id} onClick={() => setSelected(day)}>
-            {day.name.replace('TREINO ', '')}
-          </button>
-        ))}
-      </nav>
-      {selected?.exercises.map((exercise) => (
+      {selected.exercises.map((exercise) => (
         <ExerciseCard
           exercise={exercise}
           key={exercise.id}
