@@ -13,6 +13,7 @@ export function buildServer() {
   void app.register(cors, {
     origin: allowedOrigin || true,
     credentials: true,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'],
   });
   app.get('/health', async () => ({ status: 'ok' }));
   authPlugin(app);
