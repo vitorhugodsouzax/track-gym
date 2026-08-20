@@ -1,4 +1,4 @@
-import type { AuthUser, Exercise, PlansPayload, WorkoutPlan } from '../types/api';
+import type { AuthUser, Exercise, ExerciseHistoryEntry, HistoryDayGroup, PlansPayload, WorkoutPlan, WorkoutSessionRecord } from '../types/api';
 
 const TOKEN_KEY = 'memento.token';
 
@@ -97,9 +97,17 @@ export async function deletePersonalExercise(planId: string, exerciseId: string)
 }
 
 export async function completeSession(workoutDayId: string, exercises: unknown[]) {
-  return request('/api/sessions', { method: 'POST', body: JSON.stringify({ workoutDayId, exercises }) });
+  return request<WorkoutSessionRecord>('/api/sessions', { method: 'POST', body: JSON.stringify({ workoutDayId, exercises }) });
 }
 
 export async function getLogbook() {
-  return request<any[]>('/api/logbook');
+  return request<WorkoutSessionRecord[]>('/api/logbook');
+}
+
+export async function getHistoryExercises() {
+  return request<HistoryDayGroup[]>('/api/history/exercises');
+}
+
+export async function getExerciseHistory(exerciseTemplateId: string) {
+  return request<ExerciseHistoryEntry[]>(`/api/exercises/${exerciseTemplateId}/history`);
 }
