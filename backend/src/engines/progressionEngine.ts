@@ -1,20 +1,11 @@
 import { roundToIncrement } from '../calculators/roundingCalculator.js';
 
-export type EquipmentType = 'FREE_WEIGHT' | 'MACHINE';
-export type Feeling = 'GOOD' | 'NORMAL' | 'BAD';
-
-export interface ProgressionCriteria {
-  loadControlled: boolean;
-  repsInReserve: number;
-  feeling: Feeling;
-  repsClean: boolean;
-}
-
-export interface ProgressionInput {
-  workingWeight: number;
-  increment: number;
-  equipmentType: EquipmentType;
-  criteria: ProgressionCriteria;
+export interface WorkingSetPerformance {
+  order: number;
+  repRangeMin: number;
+  repRangeMax: number;
+  completedReps: number;
+  actualWeight: number;
 }
 
 export interface ProgressionResult {
@@ -24,18 +15,36 @@ export interface ProgressionResult {
   reason: string;
 }
 
-export function evaluateProgression(input: ProgressionInput): ProgressionResult {
-  const { criteria } = input;
-  const criteriaMet = criteria.loadControlled && criteria.repsInReserve >= 2 && criteria.feeling !== 'BAD' && criteria.repsClean;
-  if (!criteriaMet) {
-    return { shouldProgress: false, nextWorkingWeight: input.workingWeight, percentage: null, reason: 'Os critérios de progressão ainda não foram atingidos.' };
-  }
+export function repTarget(repRangeMin: number, repRangeMax: number): number {
+  return Math.max(repRangeMax, repRangeMin + 2);
+}
 
-  const percentage = input.equipmentType === 'MACHINE' ? 5 : 2.5;
+export function evaluateProgression(workingSets: WorkingSetPerformance[], increment: number): ProgressionResult {
+  if (workingSets.length === 0) throw new Error('At least one working set is required to evaluate progression.');
+  const sorted = [...workingSets].sort((a, b) => a.order - b.order);
+  const lastSet = sorted[sorted.length - 1];
+  const allMet = sorted.every((set) => set.completedReps >= repTarget(set.repRangeMin, set.repRangeMax));
+  if (!allMet) {
+    return {
+      shouldProgress: false,
+      nextWorkingWeight: lastSet.actualWeight,
+      percentage: null,
+      reason: 'Carga mantida: nem todas as Working Sets bateram a meta de reps.',
+    };
+  }
   return {
     shouldProgress: true,
-    nextWorkingWeight: roundToIncrement(input.workingWeight * (1 + percentage / 100), input.increment),
-    percentage,
-    reason: 'Progressão liberada: carga controlada, ao menos 2 reps de folga, feeling adequado e reps limpas.',
+    nextWorkingWeight: roundToIncrement(lastSet.actualWeight * 1.05, increment),
+    percentage: 5,
+    reason: 'Progressão liberada: todas as Working Sets bateram a meta de reps (rep range + 2, ou o topo do range).',
   };
+}
+
+export function evaluateRepsTrend(currentSets: WorkingSetPerformance[], previousSets: WorkingSetPerformance[]): 'improved' | 'same' {
+  if (previousSets.length === 0) return 'same';
+  const improved = currentSets.some((current) => {
+    const previous = previousSets.find((set) => set.order === current.order);
+    return previous !== undefined && current.completedReps > previous.completedReps;
+  });
+  return improved ? 'improved' : 'same';
 }
