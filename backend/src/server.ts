@@ -4,6 +4,7 @@ import { authRoutes } from './routes/authRoutes.js';
 import { planRoutes } from './routes/planRoutes.js';
 import { workoutRoutes } from './routes/workoutRoutes.js';
 import { sessionRoutes } from './routes/sessionRoutes.js';
+import { historyRoutes } from './routes/historyRoutes.js';
 
 export function buildServer() {
   const app = Fastify({ logger: true });
@@ -13,6 +14,7 @@ export function buildServer() {
   app.register(planRoutes);
   app.register(workoutRoutes);
   app.register(sessionRoutes);
+  app.register(historyRoutes);
   return app;
 }
 
