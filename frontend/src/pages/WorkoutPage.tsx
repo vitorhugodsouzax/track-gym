@@ -1,14 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ExerciseCard, type ExerciseDraft } from '../components/ExerciseCard';
 import { completeSession, getWorkouts } from '../services/api';
-import type { WorkoutDay, WorkoutPlan } from '../types/api';
+import type { WorkoutDay, WorkoutPlan, WorkoutSessionRecord } from '../types/api';
 
-export function WorkoutPage({ onNeedPlan }: { onNeedPlan: () => void }) {
+function exerciseStatusLabel(exercise: WorkoutSessionRecord['exercises'][number]) {
+  if (exercise.progression?.shouldProgress) return `▲ +${exercise.progression.percentage}% na próxima`;
+  if (exercise.trend === 'improved') return '🔸 +1 rep vs. última vez';
+  return 'Mantendo';
+}
+
+export function WorkoutPage({ onNeedPlan, onFinished }: { onNeedPlan: () => void; onFinished: () => void }) {
   const [plan, setPlan] = useState<WorkoutPlan>();
   const [selected, setSelected] = useState<WorkoutDay>();
   const [error, setError] = useState('');
   const [drafts, setDrafts] = useState<Record<string, ExerciseDraft>>({});
-  const [saved, setSaved] = useState('');
+  const [summary, setSummary] = useState<WorkoutSessionRecord>();
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -24,6 +30,25 @@ export function WorkoutPage({ onNeedPlan }: { onNeedPlan: () => void }) {
   const subtitle = useMemo(() => plan?.kind === 'VITOR' ? 'Workouts Vitor' : plan?.name ?? 'Treino', [plan]);
 
   if (error) return <section className="stack"><h1>Treino</h1><p className="alert" role="alert">{error}</p></section>;
+
+  if (summary) {
+    return (
+      <section className="stack">
+        <header className="page-hero">
+          <p className="eyebrow">Treino concluído</p>
+          <h1>{summary.exercises.length} exercícios</h1>
+        </header>
+        {summary.exercises.map((exercise) => (
+          <div className="summary-row" key={exercise.id}>
+            <strong>{exercise.nameSnapshot}</strong>
+            <span className={exercise.progression?.shouldProgress ? 'accent' : ''}>{exerciseStatusLabel(exercise)}</span>
+          </div>
+        ))}
+        <button className="primary" onClick={onFinished}>Ver no Histórico</button>
+      </section>
+    );
+  }
+
   if (!plan) {
     return (
       <section className="stack">
@@ -41,8 +66,8 @@ export function WorkoutPage({ onNeedPlan }: { onNeedPlan: () => void }) {
     if (!selected) return;
     setBusy(true);
     try {
-      await completeSession(selected.id, Object.values(drafts));
-      setSaved('Treino concluído e salvo no Logbook.');
+      const session = await completeSession(selected.id, Object.values(drafts));
+      setSummary(session);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Não foi possível salvar o treino.');
     } finally {
@@ -59,7 +84,7 @@ export function WorkoutPage({ onNeedPlan }: { onNeedPlan: () => void }) {
       </header>
       <nav className="day-tabs">
         {plan.workoutDays.map((day) => (
-          <button className={selected?.id === day.id ? 'active' : ''} key={day.id} onClick={() => { setSelected(day); setSaved(''); }}>
+          <button className={selected?.id === day.id ? 'active' : ''} key={day.id} onClick={() => setSelected(day)}>
             {day.name.replace('TREINO ', '')}
           </button>
         ))}
@@ -76,7 +101,6 @@ export function WorkoutPage({ onNeedPlan }: { onNeedPlan: () => void }) {
           {busy ? 'Salvando…' : 'Marcar treino como concluído'}
         </button>
       )}
-      {saved && <p className="status" role="status">{saved}</p>}
     </section>
   );
 }
