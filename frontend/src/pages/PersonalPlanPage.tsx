@@ -6,10 +6,11 @@ import {
   deletePersonalExercise,
   getPlans,
   openPersonalPlan,
+  renameDay,
 } from '../services/api';
 import type { SetType, WorkoutDay, WorkoutPlan } from '../types/api';
 import { formatRange, SET_LABELS } from '../utils/labels';
-import { FreeWeightIcon, MachineIcon } from '../components/Icons';
+import { FreeWeightIcon, MachineIcon, PencilIcon } from '../components/Icons';
 import { TopBar } from '../components/TopBar';
 
 const SET_TYPES: SetType[] = ['WARMUP', 'FEEDER', 'WORKING', 'TOP_SET', 'BACK_OFF', 'REST_PAUSE'];
@@ -25,6 +26,8 @@ export function PersonalPlanPage({ onTrain, onBack }: { onTrain: () => void; onB
   const [name, setName] = useState('');
   const [equipment, setEquipment] = useState<'FREE_WEIGHT' | 'MACHINE'>('FREE_WEIGHT');
   const [sets, setSets] = useState<DraftSet[]>([emptySet()]);
+  const [renaming, setRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
 
   async function refresh() {
     const payload = await getPlans();
@@ -54,6 +57,19 @@ export function PersonalPlanPage({ onTrain, onBack }: { onTrain: () => void; onB
     if (!plan) return;
     await deletePersonalDay(plan.id, dayId);
     await refresh();
+  }
+
+  async function saveRename() {
+    if (!plan || !selectedDay) return;
+    const trimmed = renameValue.trim();
+    if (!trimmed) return;
+    try {
+      await renameDay(plan.id, selectedDay.id, trimmed);
+      setRenaming(false);
+      await refresh();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Não foi possível renomear o treino.');
+    }
   }
 
   async function addExercise(event: FormEvent) {
@@ -104,10 +120,23 @@ export function PersonalPlanPage({ onTrain, onBack }: { onTrain: () => void; onB
       {!selectedDay && <p className="muted">Crie o primeiro treino para começar a montar a ficha.</p>}
       {selectedDay && (
         <>
-          <div className="section-head">
-            <h2>{selectedDay.name}</h2>
-            <button className="danger-link" onClick={() => removeDay(selectedDay.id)}>Remover treino</button>
-          </div>
+          {renaming ? (
+            <div className="row-actions">
+              <input autoFocus value={renameValue} onChange={(event) => setRenameValue(event.target.value)} placeholder="Nome do treino" />
+              <button className="ghost" onClick={saveRename}>Salvar</button>
+              <button className="ghost" onClick={() => setRenaming(false)}>Cancelar</button>
+            </div>
+          ) : (
+            <div className="section-head">
+              <div className="row-actions">
+                <h2>{selectedDay.name}</h2>
+                <button aria-label="Renomear treino" className="icon-button" onClick={() => { setRenaming(true); setRenameValue(selectedDay.name); }}>
+                  <PencilIcon />
+                </button>
+              </div>
+              <button className="danger-link" onClick={() => removeDay(selectedDay.id)}>Remover treino</button>
+            </div>
+          )}
           {selectedDay.exercises.length === 0 && <p className="muted">Nenhum exercício ainda.</p>}
           {selectedDay.exercises.map((exercise) => (
             <div className="row-item" key={exercise.id}>

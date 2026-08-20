@@ -110,6 +110,10 @@ export async function deletePersonalDay(planId: string, dayId: string) {
   return request(`/api/plans/${planId}/days/${dayId}`, { method: 'DELETE' });
 }
 
+export async function renameDay(planId: string, dayId: string, name: string) {
+  return request(`/api/plans/${planId}/days/${dayId}`, { method: 'PATCH', body: JSON.stringify({ name }) });
+}
+
 export async function addPersonalExercise(planId: string, dayId: string, body: {
   name: string;
   equipmentType: Exercise['equipmentType'];
@@ -129,6 +133,10 @@ export async function completeSession(workoutDayId: string, exercises: unknown[]
 
 export async function getLogbook() {
   return request<WorkoutSessionRecord[]>('/api/logbook');
+}
+
+export async function deleteSession(sessionId: string) {
+  return request(`/api/logbook/${sessionId}`, { method: 'DELETE' });
 }
 
 export async function getHistoryExercises() {

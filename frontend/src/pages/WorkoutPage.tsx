@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ExerciseCard, type ExerciseDraft } from '../components/ExerciseCard';
-import { ChevronLeftIcon, ClockIcon } from '../components/Icons';
-import { completeSession, getWorkouts } from '../services/api';
+import { ChevronLeftIcon, ClockIcon, PencilIcon } from '../components/Icons';
+import { completeSession, getWorkouts, renameDay } from '../services/api';
 import type { WorkoutDay, WorkoutPlan, WorkoutSessionRecord } from '../types/api';
 
 const TIMER_KEY = 'memento-mori-workout-start';
@@ -27,6 +27,9 @@ export function WorkoutPage({ onNeedPlan, onFinished }: { onNeedPlan: () => void
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [renamingDayId, setRenamingDayId] = useState<string>();
+  const [renameValue, setRenameValue] = useState('');
+  const [renameError, setRenameError] = useState('');
 
   const handleDraftChange = useCallback((draft: ExerciseDraft) => {
     setDrafts((current) => ({ ...current, [draft.exerciseTemplateId]: draft }));
@@ -59,6 +62,28 @@ export function WorkoutPage({ onNeedPlan, onFinished }: { onNeedPlan: () => void
 
   function backToList() {
     setSelected(undefined);
+  }
+
+  function startRename(day: WorkoutDay) {
+    setRenamingDayId(day.id);
+    setRenameValue(day.name);
+    setRenameError('');
+  }
+
+  async function saveRename(planId: string) {
+    if (!renamingDayId) return;
+    const name = renameValue.trim();
+    if (!name) return;
+    try {
+      await renameDay(planId, renamingDayId, name);
+      setPlan((current) => current && {
+        ...current,
+        workoutDays: current.workoutDays.map((day) => day.id === renamingDayId ? { ...day, name } : day),
+      });
+      setRenamingDayId(undefined);
+    } catch (reason) {
+      setRenameError(reason instanceof Error ? reason.message : 'Não foi possível renomear o treino.');
+    }
   }
 
   const subtitle = useMemo(() => plan?.kind === 'VITOR' ? 'Workouts Vitor' : plan?.name ?? 'Treino', [plan]);
@@ -141,7 +166,21 @@ export function WorkoutPage({ onNeedPlan, onFinished }: { onNeedPlan: () => void
         </header>
         {plan.workoutDays.map((day) => (
           <article className="log-card" key={day.id}>
-            <strong>{day.name}</strong>
+            {renamingDayId === day.id ? (
+              <div className="row-actions">
+                <input autoFocus value={renameValue} onChange={(event) => setRenameValue(event.target.value)} placeholder="Nome do treino" />
+                <button className="ghost" onClick={() => saveRename(plan.id)}>Salvar</button>
+                <button className="ghost" onClick={() => setRenamingDayId(undefined)}>Cancelar</button>
+              </div>
+            ) : (
+              <div className="row-actions">
+                <strong>{day.name}</strong>
+                <button aria-label="Renomear treino" className="icon-button" onClick={() => startRename(day)}>
+                  <PencilIcon />
+                </button>
+              </div>
+            )}
+            {renamingDayId === day.id && renameError && <p className="alert" role="alert">{renameError}</p>}
             <p className="muted">{day.exercises.map((exercise) => exercise.name).join(', ') || 'Sem exercícios ainda.'}</p>
             <button className="primary" onClick={() => startDay(day)} disabled={day.exercises.length === 0}>Iniciar rotina</button>
           </article>

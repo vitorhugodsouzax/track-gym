@@ -144,4 +144,12 @@ export async function sessionRoutes(app: FastifyInstance) {
     where: { status: 'COMPLETED', userId: request.user?.id }, orderBy: { performedAt: 'desc' },
     include: { workoutDay: true, exercises: { orderBy: { order: 'asc' }, include: { sets: { orderBy: { order: 'asc' } }, progression: true } } },
   }));
+
+  app.delete<{ Params: { sessionId: string } }>('/api/logbook/:sessionId', async (request, reply) => {
+    const userId = request.user?.id;
+    const session = await prisma.workoutSession.findFirst({ where: { id: request.params.sessionId, userId } });
+    if (!session) return reply.code(404).send({ message: 'Sessão não encontrada.' });
+    await prisma.workoutSession.delete({ where: { id: session.id } });
+    return { ok: true };
+  });
 }

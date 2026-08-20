@@ -63,6 +63,18 @@ export async function planRoutes(app: FastifyInstance) {
     return reply.code(201).send(day);
   });
 
+  app.patch<{ Params: { planId: string; dayId: string }; Body: { name?: string } }>('/api/plans/:planId/days/:dayId', async (request, reply) => {
+    const user = requireUser(request);
+    const name = request.body?.name?.trim();
+    if (!name) return reply.code(400).send({ message: 'Informe o nome do treino.' });
+    const day = await prisma.workoutDay.findFirst({
+      where: { id: request.params.dayId, planId: request.params.planId, plan: { OR: [{ kind: 'VITOR' }, { kind: 'PERSONAL', userId: user.id }] } },
+    });
+    if (!day) return reply.code(404).send({ message: 'Treino não encontrado.' });
+    const updated = await prisma.workoutDay.update({ where: { id: day.id }, data: { name } });
+    return updated;
+  });
+
   app.delete<{ Params: { planId: string; dayId: string } }>('/api/plans/:planId/days/:dayId', async (request, reply) => {
     const user = requireUser(request);
     const day = await prisma.workoutDay.findFirst({

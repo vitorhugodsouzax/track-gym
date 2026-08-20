@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getExerciseHistory, getHistoryExercises, getLogbook } from '../services/api';
+import { deleteSession, getExerciseHistory, getHistoryExercises, getLogbook } from '../services/api';
 import type { ExerciseHistoryEntry, ExerciseStatus, HistoryDayGroup, WorkoutSessionRecord } from '../types/api';
 import { formatRange, SET_LABELS } from '../utils/labels';
 import { Sparkline } from '../components/Sparkline';
 import { Segmented } from '../components/Segmented';
 import { TopBar } from '../components/TopBar';
+import { TrashIcon } from '../components/Icons';
 
 const MODE_OPTIONS = [
   { id: 'exercise' as const, label: 'Por exercício' },
@@ -27,6 +28,7 @@ export function HistoryPage() {
   const [query, setQuery] = useState('');
   const [openExercise, setOpenExercise] = useState<{ id: string; name: string }>();
   const [detail, setDetail] = useState<ExerciseHistoryEntry[]>([]);
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string>();
 
   useEffect(() => {
     getHistoryExercises().then(setGroups).catch(() => setGroups([]));
@@ -37,6 +39,12 @@ export function HistoryPage() {
     if (!openExercise) return;
     getExerciseHistory(openExercise.id).then(setDetail).catch(() => setDetail([]));
   }, [openExercise]);
+
+  async function removeSession(sessionId: string) {
+    await deleteSession(sessionId);
+    setSessions((current) => current.filter((session) => session.id !== sessionId));
+    setConfirmingDeleteId(undefined);
+  }
 
   const filteredGroups = useMemo(() => {
     if (!query.trim()) return groups;
@@ -104,7 +112,17 @@ export function HistoryPage() {
             <header>
               <h2>{session.workoutDay.name}</h2>
               <small>{new Date(session.performedAt).toLocaleDateString('pt-BR')}</small>
+              <button aria-label="Excluir sessão" className="icon-button" onClick={() => setConfirmingDeleteId(session.id)}>
+                <TrashIcon />
+              </button>
             </header>
+            {confirmingDeleteId === session.id && (
+              <div className="row-actions">
+                <span className="muted">Excluir esta sessão? Não pode ser desfeito.</span>
+                <button className="danger-link" onClick={() => removeSession(session.id)}>Excluir</button>
+                <button className="ghost" onClick={() => setConfirmingDeleteId(undefined)}>Cancelar</button>
+              </div>
+            )}
             {session.exercises.map((exercise) => (
               <div className="log-exercise" key={exercise.id}>
                 <strong>{exercise.nameSnapshot}</strong>
