@@ -43,7 +43,7 @@ export function ExerciseCard({ exercise, onChange }: { exercise: Exercise; onCha
   const initialWeight = useMemo(() => suggestedWorkingWeight(exercise.lastPerformance), [exercise]);
   const [workingWeight, setWorkingWeight] = useState(initialWeight !== undefined ? String(initialWeight) : '');
   const feederCount = useMemo(() => exercise.setTemplates.filter((set) => set.type === 'FEEDER').length, [exercise]);
-  const feeders = workingWeight ? calculateFeeders(Number(workingWeight), feederCount, Number(exercise.increment)) : [];
+  const feeders = useMemo(() => workingWeight ? calculateFeeders(Number(workingWeight), feederCount, Number(exercise.increment)) : [], [workingWeight, feederCount, exercise.increment]);
   const [values, setValues] = useState<Record<number, Record<string, unknown>>>({});
   const [restSeconds, setRestSeconds] = useState(0);
 
@@ -56,24 +56,6 @@ export function ExerciseCard({ exercise, onChange }: { exercise: Exercise; onCha
   const update = (index: number, value: Record<string, unknown>) =>
     setValues((current) => ({ ...current, [index]: { ...current[index], ...value } }));
 
-  useEffect(() => {
-    onChange?.({
-      exerciseTemplateId: exercise.id,
-      nameSnapshot: exercise.name,
-      order: exercise.order,
-      equipmentType: exercise.equipmentType,
-      workingWeight: workingWeight ? Number(workingWeight) : undefined,
-      increment: Number(exercise.increment),
-      sets: exercise.setTemplates.map((set, index) => ({
-        type: set.type,
-        order: set.order,
-        repRangeMin: set.repRangeMin,
-        repRangeMax: set.repRangeMax,
-        ...values[index],
-      })),
-    });
-  }, [exercise, workingWeight, values, onChange]);
-
   const workingIndexes = exercise.setTemplates
     .map((set, index) => ({ set, index }))
     .filter(({ set }) => set.type === 'WORKING')
@@ -84,15 +66,51 @@ export function ExerciseCard({ exercise, onChange }: { exercise: Exercise; onCha
   const topSetWeight = topSetBackOffBasis !== undefined ? calculateTopSet(topSetBackOffBasis, exercise.equipmentType, Number(exercise.increment)) : undefined;
   const backOffWeight = topSetBackOffBasis !== undefined ? calculateBackOff(topSetBackOffBasis, Number(exercise.increment)) : undefined;
 
+  useEffect(() => {
+    onChange?.({
+      exerciseTemplateId: exercise.id,
+      nameSnapshot: exercise.name,
+      order: exercise.order,
+      equipmentType: exercise.equipmentType,
+      workingWeight: workingWeight ? Number(workingWeight) : undefined,
+      increment: Number(exercise.increment),
+      sets: exercise.setTemplates.map((set, index) => {
+        const feederIndex = exercise.setTemplates.slice(0, index).filter((item) => item.type === 'FEEDER').length;
+        const plannedWeight = set.type === 'FEEDER'
+          ? feeders[feederIndex]?.weight
+          : set.type === 'TOP_SET'
+            ? topSetWeight
+            : set.type === 'BACK_OFF'
+              ? backOffWeight
+              : (set.type === 'WORKING' || set.type === 'REST_PAUSE')
+                ? (workingWeight ? Number(workingWeight) : undefined)
+                : undefined;
+
+        return {
+          type: set.type,
+          order: set.order,
+          repRangeMin: set.repRangeMin,
+          repRangeMax: set.repRangeMax,
+          actualWeight: values[index]?.actualWeight !== undefined ? values[index].actualWeight : plannedWeight,
+          ...values[index],
+        };
+      }),
+    });
+  }, [exercise, workingWeight, values, feeders, topSetWeight, backOffWeight, onChange]);
+
   const completedWorkingSets: WorkingSetPerformance[] = workingIndexes
-    .map((index) => ({ set: exercise.setTemplates[index], input: values[index] }))
-    .filter(({ input }) => input?.completedReps !== undefined && input?.actualWeight !== undefined)
-    .map(({ set, input }) => ({
+    .map((index) => {
+      const set = exercise.setTemplates[index];
+      const actualWeight = values[index]?.actualWeight !== undefined ? Number(values[index].actualWeight) : (workingWeight ? Number(workingWeight) : undefined);
+      return { set, input: values[index], actualWeight };
+    })
+    .filter(({ input, actualWeight }) => input?.completedReps !== undefined && actualWeight !== undefined)
+    .map(({ set, input, actualWeight }) => ({
       order: set.order,
       repRangeMin: set.repRangeMin,
       repRangeMax: set.repRangeMax,
       completedReps: Number(input!.completedReps),
-      actualWeight: Number(input!.actualWeight),
+      actualWeight: actualWeight!,
     }));
 
   const liveProgression = completedWorkingSets.length > 0 && completedWorkingSets.length === workingIndexes.length
@@ -153,7 +171,13 @@ export function ExerciseCard({ exercise, onChange }: { exercise: Exercise; onCha
             </div>
             {(set.type === 'WARMUP' || set.type === 'WORKING' || set.type === 'TOP_SET' || set.type === 'BACK_OFF' || set.type === 'REST_PAUSE') && (
               <div className="set-fields">
-                <input aria-label={`Carga realizada ${set.order}`} inputMode="decimal" placeholder="kg feito" onChange={(event) => update(index, { actualWeight: Number(event.target.value) })} />
+                <input 
+                  aria-label={`Carga realizada ${set.order}`} 
+                  inputMode="decimal" 
+                  placeholder="kg feito" 
+                  value={values[index]?.actualWeight !== undefined ? String(values[index].actualWeight) : (planned !== '—' && planned !== 'manual' ? String(planned) : '')}
+                  onChange={(event) => update(index, { actualWeight: event.target.value ? Number(event.target.value) : undefined })} 
+                />
                 {(set.type === 'WORKING' || set.type === 'REST_PAUSE') && (
                   <input aria-label={`Reps realizadas ${set.order}`} inputMode="numeric" placeholder="reps" onChange={(event) => update(index, { completedReps: Number(event.target.value) })} />
                 )}

@@ -39,9 +39,14 @@ function toPerformance(set: CompletedSet): WorkingSetPerformance {
 export async function sessionRoutes(app: FastifyInstance) {
   app.post<{ Body: { workoutDayId: string; exercises: CompletedExercise[] } }>('/api/sessions', async (request, reply) => {
     const userId = request.user?.id;
+    
+    // Sort exercises by their original order and reassign to 1, 2, 3... to avoid unique constraint violations
+    const sortedExercises = [...request.body.exercises].sort((a, b) => a.order - b.order);
 
     const trendByOrder = new Map<number, 'improved' | 'same'>();
-    for (const exercise of request.body.exercises) {
+    for (let i = 0; i < sortedExercises.length; i++) {
+      const exercise = sortedExercises[i];
+      const order = i + 1;
       if (!exercise.exerciseTemplateId) continue;
       const workingSets = exercise.sets.filter((set) => set.type === 'WORKING');
       if (workingSets.length === 0) continue;
@@ -49,7 +54,7 @@ export async function sessionRoutes(app: FastifyInstance) {
       const previousWorking = (previous?.sets ?? [])
         .filter((set) => set.type === 'WORKING')
         .map((set) => ({ order: set.order, repRangeMin: set.repRangeMin, repRangeMax: set.repRangeMax, completedReps: set.completedReps ?? 0, actualWeight: set.actualWeight ?? 0 }));
-      trendByOrder.set(exercise.order, evaluateRepsTrend(workingSets.map(toPerformance), previousWorking));
+      trendByOrder.set(order, evaluateRepsTrend(workingSets.map(toPerformance), previousWorking));
     }
 
     const session = await prisma.workoutSession.create({
@@ -58,18 +63,30 @@ export async function sessionRoutes(app: FastifyInstance) {
         userId,
         status: 'COMPLETED',
         exercises: {
-          create: request.body.exercises.map((exercise) => {
+          create: sortedExercises.map((exercise, i) => {
+            const order = i + 1;
             const workingSets = exercise.sets.filter((set) => set.type === 'WORKING');
             const canEvaluate = workingSets.length > 0 && workingSets.every((set) => set.actualWeight !== undefined && set.completedReps !== undefined);
             const progression = canEvaluate ? evaluateProgression(workingSets.map(toPerformance), exercise.increment) : undefined;
             return {
               exerciseTemplateId: exercise.exerciseTemplateId,
               nameSnapshot: exercise.nameSnapshot,
-              order: exercise.order,
+              order,
               equipmentType: exercise.equipmentType,
               workingWeight: exercise.workingWeight,
               increment: exercise.increment,
-              sets: { create: exercise.sets },
+              sets: {
+                create: exercise.sets.map((set, setIndex) => ({
+                  type: set.type,
+                  order: setIndex + 1,
+                  plannedWeight: set.plannedWeight,
+                  actualWeight: set.actualWeight,
+                  repRangeMin: set.repRangeMin,
+                  repRangeMax: set.repRangeMax,
+                  completedReps: set.completedReps,
+                  notes: set.notes,
+                })),
+              },
               progression: progression
                 ? { create: { shouldProgress: progression.shouldProgress, nextWorkingWeight: progression.nextWorkingWeight, percentage: progression.percentage, reason: progression.reason } }
                 : undefined,

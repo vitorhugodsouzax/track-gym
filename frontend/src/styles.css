@@ -132,8 +132,13 @@ input, select {
   padding: 20px 18px;
   background: linear-gradient(180deg, #1c2016, var(--card));
   border: 1px solid rgba(215, 255, 87, 0.18);
+  transition: all 0.3s ease;
+}
+.choice-card:hover {
+  border-color: var(--accent);
 }
 .choice-card.secondary { background: var(--card); border-color: var(--line); }
+.choice-card.secondary:hover { border-color: var(--accent); }
 .choice-card.selected { outline: 2px solid var(--accent); }
 .choice-card strong { font-size: 1.25rem; }
 .choice-kicker { color: var(--accent); font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; }

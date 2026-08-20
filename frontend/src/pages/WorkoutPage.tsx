@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ExerciseCard, type ExerciseDraft } from '../components/ExerciseCard';
 import { completeSession, getWorkouts } from '../services/api';
 import type { WorkoutDay, WorkoutPlan, WorkoutSessionRecord } from '../types/api';
@@ -16,6 +16,11 @@ export function WorkoutPage({ onNeedPlan, onFinished }: { onNeedPlan: () => void
   const [drafts, setDrafts] = useState<Record<string, ExerciseDraft>>({});
   const [summary, setSummary] = useState<WorkoutSessionRecord>();
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const handleDraftChange = useCallback((draft: ExerciseDraft) => {
+    setDrafts((current) => ({ ...current, [draft.exerciseTemplateId]: draft }));
+  }, []);
 
   useEffect(() => {
     getWorkouts()
@@ -24,7 +29,8 @@ export function WorkoutPage({ onNeedPlan, onFinished }: { onNeedPlan: () => void
         setPlan(next);
         setSelected(next?.workoutDays[0]);
       })
-      .catch((reason: Error) => setError(reason.message));
+      .catch((reason: Error) => setError(reason.message))
+      .finally(() => setLoading(false));
   }, []);
 
   const subtitle = useMemo(() => plan?.kind === 'VITOR' ? 'Workouts Vitor' : plan?.name ?? 'Treino', [plan]);
@@ -49,6 +55,10 @@ export function WorkoutPage({ onNeedPlan, onFinished }: { onNeedPlan: () => void
     );
   }
 
+  if (loading) {
+    return <section className="stack"><p className="muted">Carregando treino...</p></section>;
+  }
+
   if (!plan) {
     return (
       <section className="stack">
@@ -66,7 +76,9 @@ export function WorkoutPage({ onNeedPlan, onFinished }: { onNeedPlan: () => void
     if (!selected) return;
     setBusy(true);
     try {
-      const session = await completeSession(selected.id, Object.values(drafts));
+      const selectedExerciseIds = new Set(selected.exercises.map((e) => e.id));
+      const payload = Object.values(drafts).filter((draft) => selectedExerciseIds.has(draft.exerciseTemplateId));
+      const session = await completeSession(selected.id, payload);
       setSummary(session);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Não foi possível salvar o treino.');
@@ -93,7 +105,7 @@ export function WorkoutPage({ onNeedPlan, onFinished }: { onNeedPlan: () => void
         <ExerciseCard
           exercise={exercise}
           key={exercise.id}
-          onChange={(draft) => setDrafts((current) => ({ ...current, [draft.exerciseTemplateId]: draft }))}
+          onChange={handleDraftChange}
         />
       ))}
       {selected && (

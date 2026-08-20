@@ -11,12 +11,33 @@ export function setToken(token: string | null) {
   else localStorage.removeItem(TOKEN_KEY);
 }
 
+const cache = new Map<string, { data: unknown; expires: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+export function clearCache() {
+  cache.clear();
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const isGet = !init?.method || init.method.toUpperCase() === 'GET';
+  
+  if (isGet) {
+    const cached = cache.get(path);
+    if (cached && cached.expires > Date.now()) {
+      return cached.data as T;
+    }
+  } else {
+    // Clear cache on any mutation (POST, PUT, DELETE) so data stays fresh
+    cache.clear();
+  }
+
   const token = getToken();
   const headers = new Headers(init?.headers);
   if (!headers.has('content-type') && init?.body) headers.set('content-type', 'application/json');
   if (token) headers.set('authorization', `Bearer ${token}`);
+  
   const response = await fetch(path, { ...init, headers });
+  
   if (response.status === 401) {
     setToken(null);
     throw new Error('Sessão expirada. Entre novamente.');
@@ -26,7 +47,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(body.message ?? 'Não foi possível concluir a operação.');
   }
   if (response.status === 204) return undefined as T;
-  return response.json() as Promise<T>;
+  
+  const data = await response.json() as T;
+  if (isGet) {
+    cache.set(path, { data, expires: Date.now() + CACHE_TTL });
+  }
+  return data;
 }
 
 export async function getWorkouts(): Promise<WorkoutPlan[]> {
