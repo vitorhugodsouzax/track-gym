@@ -20,6 +20,7 @@ export function repTarget(repRangeMin: number, repRangeMax: number): number {
 }
 
 export function evaluateProgression(workingSets: WorkingSetPerformance[], increment: number): ProgressionPreview {
+  if (workingSets.length === 0) throw new Error('At least one working set is required to evaluate progression.');
   const sorted = [...workingSets].sort((a, b) => a.order - b.order);
   const lastSet = sorted[sorted.length - 1];
   const allMet = sorted.every((set) => set.completedReps >= repTarget(set.repRangeMin, set.repRangeMax));

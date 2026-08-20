@@ -21,6 +21,10 @@ describe('evaluateProgression', () => {
     ], 2.5);
     expect(result).toMatchObject({ shouldProgress: false, nextWorkingWeight: 100, percentage: null });
   });
+
+  it('lança erro quando nenhuma working set é fornecida', () => {
+    expect(() => evaluateProgression([], 2.5)).toThrow();
+  });
 });
 
 describe('evaluateRepsTrend', () => {
