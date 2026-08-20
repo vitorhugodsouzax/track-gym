@@ -46,7 +46,7 @@ export function App() {
             onOpenPersonal={() => setPage('Ficha pessoal')}
           />
         )}
-        {page === 'Ficha pessoal' && <PersonalPlanPage onTrain={() => setPage('Treino')} />}
+        {page === 'Ficha pessoal' && <PersonalPlanPage onTrain={() => setPage('Treino')} onBack={() => setPage('Fichas')} />}
         {page === 'Histórico' && <HistoryPage />}
         {page === 'Configurações' && <SettingsPage nickname={auth.user.nickname} onLogout={auth.logout} />}
       </main>

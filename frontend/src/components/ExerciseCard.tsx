@@ -5,6 +5,7 @@ import { calculateTopSet } from '../utils/topSetCalculator';
 import { calculateBackOff } from '../utils/backOffCalculator';
 import { evaluateProgression, evaluateRepsTrend, repTarget, type WorkingSetPerformance } from '../utils/progression';
 import { formatRange, SET_LABELS } from '../utils/labels';
+import { FreeWeightIcon, MachineIcon } from './Icons';
 
 function setLabel(template: SetTemplate, feederNumber: number, workingNumber: number) {
   if (template.type === 'FEEDER') return `Feeder ${feederNumber}`;
@@ -27,6 +28,22 @@ function formatLastWorking(lastPerformance?: LastPerformance | null): string | n
   const weight = workingSets[0].actualWeight ?? workingSets[0].plannedWeight;
   const reps = workingSets.map((set) => set.completedReps ?? '—').join(' × ');
   return `${weight ?? '—'} kg × ${reps}`;
+}
+
+function previousForSet(lastPerformance: LastPerformance | null | undefined, type: SetTemplate['type'], order: number): string | null {
+  const match = lastPerformance?.sets.find((set) => set.type === type && set.order === order);
+  if (!match) return null;
+  const weight = match.actualWeight ?? match.plannedWeight;
+  if (weight === null || weight === undefined) return null;
+  return `${weight}kg x ${match.completedReps ?? '—'}`;
+}
+
+function setsSummary(setTemplates: SetTemplate[]): string {
+  const working = setTemplates.filter((set) => set.type === 'WORKING');
+  if (working.length === 0) return `${setTemplates.length} séries`;
+  const min = working[0].repRangeMin;
+  const max = working[0].repRangeMax;
+  return `${working.length}x${min}-${max}`;
 }
 
 export interface ExerciseDraft {
@@ -136,10 +153,12 @@ export function ExerciseCard({ exercise, onChange }: { exercise: Exercise; onCha
   return (
     <article className="exercise-card">
       <header>
-        <span>{String(exercise.order).padStart(2, '0')}</span>
+        <span className="icon-circle">
+          {exercise.equipmentType === 'MACHINE' ? <MachineIcon /> : <FreeWeightIcon />}
+        </span>
         <div>
           <h2>{exercise.name}</h2>
-          <small>Amplitude total · {exercise.equipmentType === 'MACHINE' ? 'Máquina' : 'Livre'}</small>
+          <small>{setsSummary(exercise.setTemplates)}</small>
         </div>
       </header>
       {lastWorkingText && <p className="muted">Última: {lastWorkingText}</p>}
@@ -149,6 +168,13 @@ export function ExerciseCard({ exercise, onChange }: { exercise: Exercise; onCha
         Carga de trabalho
         <input inputMode="decimal" value={workingWeight} onChange={(event) => setWorkingWeight(event.target.value)} placeholder="kg" />
       </label>
+      <div className="sets-table-head">
+        <span>Série</span>
+        <span>Anterior</span>
+        <span>Kg</span>
+        <span>Reps</span>
+        <span />
+      </div>
       {exercise.setTemplates.map((set, index) => {
         const feederIndex = exercise.setTemplates.slice(0, index).filter((item) => item.type === 'FEEDER').length;
         const workingIndex = exercise.setTemplates.slice(0, index).filter((item) => item.type === 'WORKING').length;
@@ -162,29 +188,41 @@ export function ExerciseCard({ exercise, onChange }: { exercise: Exercise; onCha
                 ? (backOffWeight ?? '—')
                 : workingWeight || '—';
         const hitTarget = set.type === 'WORKING' && Number(values[index]?.completedReps) >= repTarget(set.repRangeMin, set.repRangeMax);
+        const editable = set.type === 'WARMUP' || set.type === 'WORKING' || set.type === 'TOP_SET' || set.type === 'BACK_OFF' || set.type === 'REST_PAUSE';
+        const acceptsReps = set.type === 'WORKING' || set.type === 'REST_PAUSE';
+        const previous = previousForSet(exercise.lastPerformance, set.type, set.order);
+        const done = acceptsReps ? values[index]?.completedReps !== undefined : values[index]?.actualWeight !== undefined;
         return (
-          <div className="set-block" key={set.id}>
-            <div className="set-topline">
+          <div className="sets-table-row" key={set.id}>
+            <div>
               <strong>{setLabel(set, feederIndex + 1, workingIndex + 1)}</strong>
-              <span>{planned} kg × {formatRange(set.repRangeMin, set.repRangeMax)}</span>
-              {hitTarget && <span className="hit-target">🔥 na meta</span>}
-            </div>
-            {(set.type === 'WARMUP' || set.type === 'WORKING' || set.type === 'TOP_SET' || set.type === 'BACK_OFF' || set.type === 'REST_PAUSE') && (
-              <div className="set-fields">
-                <input 
-                  aria-label={`Carga realizada ${set.order}`} 
-                  inputMode="decimal" 
-                  placeholder="kg feito" 
-                  value={values[index]?.actualWeight !== undefined ? String(values[index].actualWeight) : (planned !== '—' && planned !== 'manual' ? String(planned) : '')}
-                  onChange={(event) => update(index, { actualWeight: event.target.value ? Number(event.target.value) : undefined })} 
-                />
-                {(set.type === 'WORKING' || set.type === 'REST_PAUSE') && (
-                  <input aria-label={`Reps realizadas ${set.order}`} inputMode="numeric" placeholder="reps" onChange={(event) => update(index, { completedReps: Number(event.target.value) })} />
-                )}
-                {set.type === 'REST_PAUSE' && (
-                  <button type="button" onClick={() => setRestSeconds(20)}>{restSeconds > 0 ? `${restSeconds}s` : 'Timer 20s'}</button>
-                )}
+              <div className="row-item-meta">
+                {formatRange(set.repRangeMin, set.repRangeMax)} reps
+                {hitTarget && <span className="hit-target"> · 🔥 na meta</span>}
               </div>
+            </div>
+            <span className="row-item-trail">{previous ?? '—'}</span>
+            {editable ? (
+              <input
+                aria-label={`Carga realizada ${set.order}`}
+                inputMode="decimal"
+                placeholder="kg"
+                value={values[index]?.actualWeight !== undefined ? String(values[index].actualWeight) : (planned !== '—' && planned !== 'manual' ? String(planned) : '')}
+                onChange={(event) => update(index, { actualWeight: event.target.value ? Number(event.target.value) : undefined })}
+              />
+            ) : (
+              <span className="row-item-trail">{planned}</span>
+            )}
+            {acceptsReps ? (
+              <input aria-label={`Reps realizadas ${set.order}`} inputMode="numeric" placeholder="—" onChange={(event) => update(index, { completedReps: Number(event.target.value) })} />
+            ) : (
+              <span className="row-item-trail">—</span>
+            )}
+            <span className={`set-check ${done ? 'done' : ''}`} aria-hidden="true">✓</span>
+            {set.type === 'REST_PAUSE' && (
+              <button className="ghost rest-timer" type="button" onClick={() => setRestSeconds(20)}>
+                {restSeconds > 0 ? `${restSeconds}s` : 'Timer 20s'}
+              </button>
             )}
           </div>
         );

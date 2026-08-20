@@ -3,6 +3,13 @@ import { getExerciseHistory, getHistoryExercises, getLogbook } from '../services
 import type { ExerciseHistoryEntry, ExerciseStatus, HistoryDayGroup, WorkoutSessionRecord } from '../types/api';
 import { formatRange, SET_LABELS } from '../utils/labels';
 import { Sparkline } from '../components/Sparkline';
+import { Segmented } from '../components/Segmented';
+import { TopBar } from '../components/TopBar';
+
+const MODE_OPTIONS = [
+  { id: 'exercise' as const, label: 'Por exercício' },
+  { id: 'session' as const, label: 'Por sessão' },
+];
 
 type ViewMode = 'exercise' | 'session';
 
@@ -42,11 +49,7 @@ export function HistoryPage() {
   if (openExercise) {
     return (
       <section className="stack">
-        <button className="ghost" onClick={() => setOpenExercise(undefined)}>← Voltar</button>
-        <header className="page-hero">
-          <p className="eyebrow">Evolução</p>
-          <h1>{openExercise.name}</h1>
-        </header>
+        <TopBar title={openExercise.name} onBack={() => setOpenExercise(undefined)} />
         {detail.length === 0 && <p className="muted">Sem sessões registradas ainda.</p>}
         {detail.map((entry) => (
           <article className="log-card" key={entry.performedAt}>
@@ -68,10 +71,7 @@ export function HistoryPage() {
         <p className="eyebrow">Evolução</p>
         <h1>Histórico</h1>
       </header>
-      <div className="segmented">
-        <button className={mode === 'exercise' ? 'active' : ''} onClick={() => setMode('exercise')}>Por exercício</button>
-        <button className={mode === 'session' ? 'active' : ''} onClick={() => setMode('session')}>Por sessão</button>
-      </div>
+      <Segmented options={MODE_OPTIONS} value={mode} onChange={setMode} />
       {mode === 'exercise' ? (
         <>
           <input className="history-search" placeholder="Buscar exercício..." value={query} onChange={(event) => setQuery(event.target.value)} />
@@ -81,15 +81,15 @@ export function HistoryPage() {
               <h2>{group.workoutDayName}</h2>
               {group.exercises.map((exercise) => (
                 <button
-                  className="history-row"
+                  className="row-item"
                   key={exercise.exerciseTemplateId}
                   onClick={() => setOpenExercise({ id: exercise.exerciseTemplateId, name: exercise.name })}
                 >
-                  <div>
-                    <strong>{exercise.name}</strong>
-                    <p className="muted">{statusLabel(exercise.status, exercise.statusDetail)}</p>
+                  <div className="row-item-body">
+                    <span className="row-item-title">{exercise.name}</span>
+                    <span className="row-item-meta">{statusLabel(exercise.status, exercise.statusDetail)}</span>
                   </div>
-                  <span>
+                  <span className="row-item-trail">
                     {exercise.currentWeight ?? '—'} kg
                     <Sparkline values={exercise.trendPoints} />
                   </span>

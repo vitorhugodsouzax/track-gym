@@ -9,6 +9,8 @@ import {
 } from '../services/api';
 import type { SetType, WorkoutDay, WorkoutPlan } from '../types/api';
 import { formatRange, SET_LABELS } from '../utils/labels';
+import { FreeWeightIcon, MachineIcon } from '../components/Icons';
+import { TopBar } from '../components/TopBar';
 
 const SET_TYPES: SetType[] = ['WARMUP', 'FEEDER', 'WORKING', 'TOP_SET', 'BACK_OFF', 'REST_PAUSE'];
 
@@ -16,7 +18,7 @@ type DraftSet = { type: SetType; min: string; max: string };
 
 const emptySet = (): DraftSet => ({ type: 'WORKING', min: '8', max: '8' });
 
-export function PersonalPlanPage({ onTrain }: { onTrain: () => void }) {
+export function PersonalPlanPage({ onTrain, onBack }: { onTrain: () => void; onBack: () => void }) {
   const [plan, setPlan] = useState<WorkoutPlan>();
   const [selectedDay, setSelectedDay] = useState<WorkoutDay>();
   const [error, setError] = useState('');
@@ -76,16 +78,17 @@ export function PersonalPlanPage({ onTrain }: { onTrain: () => void }) {
   }
 
   if (!plan) {
-    return <section className="stack"><h1>Ficha pessoal</h1>{error && <p className="alert">{error}</p>}</section>;
+    return (
+      <section className="stack">
+        <TopBar title="Ficha pessoal" onBack={onBack} />
+        {error && <p className="alert">{error}</p>}
+      </section>
+    );
   }
 
   return (
     <section className="stack">
-      <header className="page-hero">
-        <p className="eyebrow">Ficha pessoal</p>
-        <h1>{plan.name}</h1>
-        <p>Crie TREINO A, B, C… e monte cada um com os exercícios que você quiser.</p>
-      </header>
+      <TopBar title={plan.name} onBack={onBack} />
       {error && <p className="alert" role="alert">{error}</p>}
       <div className="row-actions">
         <button className="primary" onClick={addDay}>Novo treino</button>
@@ -107,13 +110,16 @@ export function PersonalPlanPage({ onTrain }: { onTrain: () => void }) {
           </div>
           {selectedDay.exercises.length === 0 && <p className="muted">Nenhum exercício ainda.</p>}
           {selectedDay.exercises.map((exercise) => (
-            <article className="mini-card" key={exercise.id}>
-              <div>
-                <strong>{exercise.name}</strong>
-                <p>{exercise.setTemplates.map((set) => `${SET_LABELS[set.type]} ${formatRange(set.repRangeMin, set.repRangeMax)}`).join(' · ')}</p>
+            <div className="row-item" key={exercise.id}>
+              <span className="icon-circle">
+                {exercise.equipmentType === 'MACHINE' ? <MachineIcon /> : <FreeWeightIcon />}
+              </span>
+              <div className="row-item-body">
+                <span className="row-item-title">{exercise.name}</span>
+                <span className="row-item-meta">{exercise.setTemplates.map((set) => `${SET_LABELS[set.type]} ${formatRange(set.repRangeMin, set.repRangeMax)}`).join(' · ')}</span>
               </div>
               <button className="danger-link" onClick={() => deletePersonalExercise(plan.id, exercise.id).then(refresh)}>Remover</button>
-            </article>
+            </div>
           ))}
           <form className="composer" onSubmit={addExercise}>
             <h2>Adicionar exercício</h2>
