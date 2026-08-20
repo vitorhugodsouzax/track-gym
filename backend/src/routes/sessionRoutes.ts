@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../db.js';
 import { evaluateProgression, evaluateRepsTrend, type WorkingSetPerformance } from '../engines/progressionEngine.js';
-import { getRecentCompletedExercises } from '../repositories/performanceHistory.js';
+import { getLatestCompletedExercisesBatch } from '../repositories/performanceHistory.js';
 
 type SetType = 'WARMUP' | 'FEEDER' | 'WORKING' | 'TOP_SET' | 'BACK_OFF' | 'REST_PAUSE';
 
@@ -43,6 +43,11 @@ export async function sessionRoutes(app: FastifyInstance) {
     // Sort exercises by their original order and reassign to 1, 2, 3... to avoid unique constraint violations
     const sortedExercises = [...request.body.exercises].sort((a, b) => a.order - b.order);
 
+    const templateIds = sortedExercises
+      .map((exercise) => exercise.exerciseTemplateId)
+      .filter((id): id is string => Boolean(id));
+    const previousByTemplateId = await getLatestCompletedExercisesBatch(templateIds, userId);
+
     const trendByOrder = new Map<number, 'improved' | 'same'>();
     for (let i = 0; i < sortedExercises.length; i++) {
       const exercise = sortedExercises[i];
@@ -50,7 +55,7 @@ export async function sessionRoutes(app: FastifyInstance) {
       if (!exercise.exerciseTemplateId) continue;
       const workingSets = exercise.sets.filter((set) => set.type === 'WORKING');
       if (workingSets.length === 0) continue;
-      const [previous] = await getRecentCompletedExercises(exercise.exerciseTemplateId, userId, 1);
+      const previous = previousByTemplateId.get(exercise.exerciseTemplateId);
       const previousWorking = (previous?.sets ?? [])
         .filter((set) => set.type === 'WORKING')
         .map((set) => ({ order: set.order, repRangeMin: set.repRangeMin, repRangeMax: set.repRangeMax, completedReps: set.completedReps ?? 0, actualWeight: set.actualWeight ?? 0 }));

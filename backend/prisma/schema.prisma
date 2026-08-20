@@ -120,6 +120,9 @@ model WorkoutSession {
   workoutDay   WorkoutDay        @relation(fields: [workoutDayId], references: [id])
   user         User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
   exercises    WorkoutExercise[]
+
+  @@index([userId, status, performedAt])
+  @@index([workoutDayId])
 }
 
 model WorkoutExercise {
@@ -136,6 +139,7 @@ model WorkoutExercise {
   sets               WorkoutSet[]
 
   @@unique([sessionId, order])
+  @@index([exerciseTemplateId])
 }
 
 model WorkoutSet {
