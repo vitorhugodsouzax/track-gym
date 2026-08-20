@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { BottomNav } from './components/BottomNav';
 import { useAuth } from './hooks/useAuth';
-import { LogbookPage } from './pages/LogbookPage';
+import { HistoryPage } from './pages/HistoryPage';
 import { LoginPage } from './pages/LoginPage';
 import { PersonalPlanPage } from './pages/PersonalPlanPage';
 import { PlansPage } from './pages/PlansPage';
-import { ProgressionPage } from './pages/ProgressionPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { WorkoutPage } from './pages/WorkoutPage';
 import './styles.css';
@@ -40,7 +39,7 @@ export function App() {
         </div>
       </header>
       <main>
-        {page === 'Treino' && <WorkoutPage onNeedPlan={() => setPage('Fichas')} />}
+        {page === 'Treino' && <WorkoutPage onNeedPlan={() => setPage('Fichas')} onFinished={() => setPage('Histórico')} />}
         {page === 'Fichas' && (
           <PlansPage
             onUseVitor={() => setPage('Treino')}
@@ -48,8 +47,7 @@ export function App() {
           />
         )}
         {page === 'Ficha pessoal' && <PersonalPlanPage onTrain={() => setPage('Treino')} />}
-        {page === 'Logbook' && <LogbookPage />}
-        {page === 'Progressão' && <ProgressionPage />}
+        {page === 'Histórico' && <HistoryPage />}
         {page === 'Configurações' && <SettingsPage nickname={auth.user.nickname} onLogout={auth.logout} />}
       </main>
       <BottomNav page={page} onChange={setPage} />

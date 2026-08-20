@@ -1,8 +1,7 @@
 const ITEMS = [
   { id: 'Treino', label: 'Treino' },
   { id: 'Fichas', label: 'Fichas' },
-  { id: 'Logbook', label: 'Logbook' },
-  { id: 'Progressão', label: 'Progressão' },
+  { id: 'Histórico', label: 'Histórico' },
   { id: 'Configurações', label: 'Ajustes' },
 ] as const;
 
