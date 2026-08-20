@@ -1,0 +1,10 @@
+{
+  "name": "memento-mori-protocol",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["frontend", "backend"],
+  "scripts": {
+    "test": "npm run test --workspace=backend",
+    "test:watch": "npm run test:watch --workspace=backend"
+  }
+}

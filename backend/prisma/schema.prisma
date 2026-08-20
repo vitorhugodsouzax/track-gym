@@ -1,0 +1,169 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum EquipmentType {
+  FREE_WEIGHT
+  MACHINE
+}
+
+enum SetType {
+  WARMUP
+  FEEDER
+  WORKING
+  TOP_SET
+  BACK_OFF
+  REST_PAUSE
+}
+
+enum SessionStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum Feeling {
+  GOOD
+  NORMAL
+  BAD
+}
+
+enum PlanKind {
+  VITOR
+  PERSONAL
+}
+
+model User {
+  id              String           @id @default(cuid())
+  nickname        String           @unique
+  passwordHash    String
+  selectedPlanId  String?
+  selectedPlan    WorkoutPlan?     @relation("UserSelectedPlan", fields: [selectedPlanId], references: [id], onDelete: SetNull)
+  createdAt       DateTime         @default(now())
+  authSessions    AuthSession[]
+  ownedPlans      WorkoutPlan[]    @relation("UserOwnedPlans")
+  workoutSessions WorkoutSession[]
+}
+
+model AuthSession {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model WorkoutPlan {
+  id              String         @id @default(cuid())
+  name            String
+  kind            PlanKind       @default(VITOR)
+  userId          String?
+  user            User?          @relation("UserOwnedPlans", fields: [userId], references: [id], onDelete: Cascade)
+  selectedByUsers User[]         @relation("UserSelectedPlan")
+  workoutDays     WorkoutDay[]
+  createdAt       DateTime       @default(now())
+
+  @@index([userId])
+}
+
+model WorkoutDay {
+  id        String           @id @default(cuid())
+  planId    String
+  name      String
+  order     Int
+  plan      WorkoutPlan      @relation(fields: [planId], references: [id], onDelete: Cascade)
+  exercises Exercise[]
+  sessions  WorkoutSession[]
+
+  @@unique([planId, order])
+}
+
+model Exercise {
+  id            String                @id @default(cuid())
+  workoutDayId  String
+  name          String
+  order         Int
+  equipmentType EquipmentType
+  videoUrl      String?
+  increment     Decimal               @default(1) @db.Decimal(10, 2)
+  workoutDay    WorkoutDay            @relation(fields: [workoutDayId], references: [id], onDelete: Cascade)
+  setTemplates  ExerciseSetTemplate[]
+
+  @@unique([workoutDayId, order])
+}
+
+model ExerciseSetTemplate {
+  id          String   @id @default(cuid())
+  exerciseId  String
+  type        SetType
+  order       Int
+  repRangeMin Int
+  repRangeMax Int
+  percentage  Decimal? @db.Decimal(5, 2)
+  exercise    Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@unique([exerciseId, order])
+}
+
+model WorkoutSession {
+  id           String            @id @default(cuid())
+  workoutDayId String
+  userId       String?
+  performedAt  DateTime          @default(now())
+  status       SessionStatus     @default(IN_PROGRESS)
+  workoutDay   WorkoutDay        @relation(fields: [workoutDayId], references: [id])
+  user         User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  exercises    WorkoutExercise[]
+}
+
+model WorkoutExercise {
+  id                 String             @id @default(cuid())
+  sessionId          String
+  exerciseTemplateId String?
+  nameSnapshot       String
+  order              Int
+  equipmentType      EquipmentType
+  workingWeight      Decimal?           @db.Decimal(10, 2)
+  increment          Decimal            @db.Decimal(10, 2)
+  progression        ProgressionResult?
+  session            WorkoutSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sets               WorkoutSet[]
+
+  @@unique([sessionId, order])
+}
+
+model WorkoutSet {
+  id                String          @id @default(cuid())
+  workoutExerciseId String
+  type              SetType
+  order             Int
+  plannedWeight     Decimal?        @db.Decimal(10, 2)
+  actualWeight      Decimal?        @db.Decimal(10, 2)
+  repRangeMin       Int
+  repRangeMax       Int
+  completedReps     Int?
+  loadControlled    Boolean?
+  repsInReserve     Int?
+  feeling           Feeling?
+  repsClean         Boolean?
+  notes             String?
+  workoutExercise   WorkoutExercise @relation(fields: [workoutExerciseId], references: [id], onDelete: Cascade)
+
+  @@unique([workoutExerciseId, order])
+}
+
+model ProgressionResult {
+  id                String          @id @default(cuid())
+  workoutExerciseId String          @unique
+  shouldProgress    Boolean
+  nextWorkingWeight Decimal         @db.Decimal(10, 2)
+  percentage        Decimal?        @db.Decimal(5, 2)
+  reason            String
+  workoutExercise   WorkoutExercise @relation(fields: [workoutExerciseId], references: [id], onDelete: Cascade)
+}
