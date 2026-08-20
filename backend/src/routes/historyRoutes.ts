@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../db.js';
 import { planInclude } from '../repositories/planQuery.js';
-import { getRecentCompletedExercises, type PerformanceRecord } from '../repositories/performanceHistory.js';
+import { getRecentCompletedExercises, getRecentCompletedExercisesBatch, type PerformanceRecord } from '../repositories/performanceHistory.js';
 
 function buildSummary(exerciseTemplateId: string, name: string, recent: PerformanceRecord[]) {
   if (recent.length === 0) {
@@ -43,14 +43,15 @@ export async function historyRoutes(app: FastifyInstance) {
       where: { OR: [{ kind: 'VITOR' }, { kind: 'PERSONAL', userId }] },
       include: planInclude,
     });
+    const exerciseIds = plans.flatMap((plan) => plan.workoutDays.flatMap((day) => day.exercises.map((exercise) => exercise.id)));
+    const recentByExerciseId = await getRecentCompletedExercisesBatch(exerciseIds, userId, 6);
+
     const groups = [];
     for (const plan of plans) {
       for (const day of plan.workoutDays) {
-        const exercises = [];
-        for (const exercise of day.exercises) {
-          const recent = await getRecentCompletedExercises(exercise.id, userId, 6);
-          exercises.push(buildSummary(exercise.id, exercise.name, recent));
-        }
+        const exercises = day.exercises.map((exercise) =>
+          buildSummary(exercise.id, exercise.name, recentByExerciseId.get(exercise.id) ?? []),
+        );
         groups.push({ workoutDayName: day.name, exercises });
       }
     }

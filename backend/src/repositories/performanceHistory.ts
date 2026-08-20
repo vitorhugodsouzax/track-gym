@@ -90,3 +90,27 @@ export async function getLatestCompletedExercisesBatch(
   }
   return result;
 }
+
+export async function getRecentCompletedExercisesBatch(
+  exerciseTemplateIds: string[],
+  userId: string | undefined,
+  take: number,
+): Promise<Map<string, PerformanceRecord[]>> {
+  if (exerciseTemplateIds.length === 0) return new Map();
+  const exercises = await prisma.workoutExercise.findMany({
+    where: { exerciseTemplateId: { in: exerciseTemplateIds }, session: { status: 'COMPLETED', userId } },
+    orderBy: { session: { performedAt: 'desc' } },
+    include: performanceInclude,
+  });
+  const result = new Map<string, PerformanceRecord[]>();
+  for (const exercise of exercises) {
+    if (!exercise.exerciseTemplateId) continue;
+    const list = result.get(exercise.exerciseTemplateId);
+    if (list) {
+      if (list.length < take) list.push(toRecord(exercise));
+    } else {
+      result.set(exercise.exerciseTemplateId, [toRecord(exercise)]);
+    }
+  }
+  return result;
+}

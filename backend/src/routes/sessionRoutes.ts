@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../db.js';
 import { evaluateProgression, evaluateRepsTrend, type WorkingSetPerformance } from '../engines/progressionEngine.js';
@@ -62,44 +63,74 @@ export async function sessionRoutes(app: FastifyInstance) {
       trendByOrder.set(order, evaluateRepsTrend(workingSets.map(toPerformance), previousWorking));
     }
 
-    const session = await prisma.workoutSession.create({
-      data: {
-        workoutDayId: request.body.workoutDayId,
-        userId,
-        status: 'COMPLETED',
-        exercises: {
-          create: sortedExercises.map((exercise, i) => {
-            const order = i + 1;
-            const workingSets = exercise.sets.filter((set) => set.type === 'WORKING');
-            const canEvaluate = workingSets.length > 0 && workingSets.every((set) => set.actualWeight !== undefined && set.completedReps !== undefined);
-            const progression = canEvaluate ? evaluateProgression(workingSets.map(toPerformance), exercise.increment) : undefined;
-            return {
-              exerciseTemplateId: exercise.exerciseTemplateId,
-              nameSnapshot: exercise.nameSnapshot,
-              order,
-              equipmentType: exercise.equipmentType,
-              workingWeight: exercise.workingWeight,
-              increment: exercise.increment,
-              sets: {
-                create: exercise.sets.map((set, setIndex) => ({
-                  type: set.type,
-                  order: setIndex + 1,
-                  plannedWeight: set.plannedWeight,
-                  actualWeight: set.actualWeight,
-                  repRangeMin: set.repRangeMin,
-                  repRangeMax: set.repRangeMax,
-                  completedReps: set.completedReps,
-                  notes: set.notes,
-                })),
-              },
-              progression: progression
-                ? { create: { shouldProgress: progression.shouldProgress, nextWorkingWeight: progression.nextWorkingWeight, percentage: progression.percentage, reason: progression.reason } }
-                : undefined,
-            };
-          }),
-        },
-      },
-      include: { workoutDay: true, exercises: { include: { sets: true, progression: true } } },
+    const sessionId = randomUUID();
+    const exerciseRows = sortedExercises.map((exercise, i) => {
+      const order = i + 1;
+      const workingSets = exercise.sets.filter((set) => set.type === 'WORKING');
+      const canEvaluate = workingSets.length > 0 && workingSets.every((set) => set.actualWeight !== undefined && set.completedReps !== undefined);
+      const progression = canEvaluate ? evaluateProgression(workingSets.map(toPerformance), exercise.increment) : undefined;
+      return {
+        id: randomUUID(),
+        order,
+        exerciseTemplateId: exercise.exerciseTemplateId,
+        nameSnapshot: exercise.nameSnapshot,
+        equipmentType: exercise.equipmentType,
+        workingWeight: exercise.workingWeight,
+        increment: exercise.increment,
+        sets: exercise.sets,
+        progression,
+      };
+    });
+
+    await prisma.$transaction([
+      prisma.workoutSession.create({
+        data: { id: sessionId, workoutDayId: request.body.workoutDayId, userId, status: 'COMPLETED' },
+      }),
+      prisma.workoutExercise.createMany({
+        data: exerciseRows.map((row) => ({
+          id: row.id,
+          sessionId,
+          exerciseTemplateId: row.exerciseTemplateId,
+          nameSnapshot: row.nameSnapshot,
+          order: row.order,
+          equipmentType: row.equipmentType,
+          workingWeight: row.workingWeight,
+          increment: row.increment,
+        })),
+      }),
+      prisma.workoutSet.createMany({
+        data: exerciseRows.flatMap((row) =>
+          row.sets.map((set, setIndex) => ({
+            id: randomUUID(),
+            workoutExerciseId: row.id,
+            type: set.type,
+            order: setIndex + 1,
+            plannedWeight: set.plannedWeight,
+            actualWeight: set.actualWeight,
+            repRangeMin: set.repRangeMin,
+            repRangeMax: set.repRangeMax,
+            completedReps: set.completedReps,
+            notes: set.notes,
+          })),
+        ),
+      }),
+      prisma.progressionResult.createMany({
+        data: exerciseRows
+          .filter((row) => row.progression)
+          .map((row) => ({
+            id: randomUUID(),
+            workoutExerciseId: row.id,
+            shouldProgress: row.progression!.shouldProgress,
+            nextWorkingWeight: row.progression!.nextWorkingWeight,
+            percentage: row.progression!.percentage,
+            reason: row.progression!.reason,
+          })),
+      }),
+    ]);
+
+    const session = await prisma.workoutSession.findUniqueOrThrow({
+      where: { id: sessionId },
+      include: { workoutDay: true, exercises: { orderBy: { order: 'asc' }, include: { sets: { orderBy: { order: 'asc' } }, progression: true } } },
     });
 
     const withTrend = {
