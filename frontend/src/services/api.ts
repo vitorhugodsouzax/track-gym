@@ -1,5 +1,6 @@
 import type { AuthUser, Exercise, ExerciseHistoryEntry, HistoryDayGroup, PlansPayload, WorkoutPlan, WorkoutSessionRecord } from '../types/api';
 
+const BASE_URL = import.meta.env.VITE_API_URL ?? '';
 const TOKEN_KEY = 'memento.token';
 
 export function getToken() {
@@ -36,7 +37,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!headers.has('content-type') && init?.body) headers.set('content-type', 'application/json');
   if (token) headers.set('authorization', `Bearer ${token}`);
   
-  const response = await fetch(path, { ...init, headers });
+  const response = await fetch(`${BASE_URL}${path}`, { ...init, headers });
   
   if (response.status === 401) {
     setToken(null);

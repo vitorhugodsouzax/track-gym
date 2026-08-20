@@ -14,9 +14,10 @@
     "prisma:seed": "node scripts/prisma.mjs seed"
   },
   "dependencies": {
+    "@fastify/cors": "^11.3.0",
     "@prisma/client": "6.19.0",
-    "fastify": "latest",
-    "dotenv": "latest"
+    "dotenv": "latest",
+    "fastify": "latest"
   },
   "devDependencies": {
     "@types/node": "latest",

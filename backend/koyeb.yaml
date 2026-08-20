@@ -1,0 +1,17 @@
+name: track-gym-backend
+services:
+  - name: api
+    type: web
+    git:
+      repository: github.com/vitorhugodsouzax/track-gym
+      branch: master
+    build:
+      build-command: cd backend && npm install && npm run build && npx prisma generate
+    run:
+      run-command: node backend/dist/server.js
+    ports:
+      - port: 3000
+        protocol: http
+    health-checks:
+      - port: 3000
+        path: /health

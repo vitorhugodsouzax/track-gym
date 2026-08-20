@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import cors from '@fastify/cors';
 import { authPlugin } from './auth/plugin.js';
 import { authRoutes } from './routes/authRoutes.js';
 import { planRoutes } from './routes/planRoutes.js';
@@ -8,6 +9,10 @@ import { historyRoutes } from './routes/historyRoutes.js';
 
 export function buildServer() {
   const app = Fastify({ logger: true });
+  void app.register(cors, {
+    origin: process.env.FRONTEND_URL ?? true,
+    credentials: true,
+  });
   app.get('/health', async () => ({ status: 'ok' }));
   authPlugin(app);
   app.register(authRoutes);
@@ -20,5 +25,6 @@ export function buildServer() {
 
 if (process.env.NODE_ENV !== 'test') {
   const app = buildServer();
-  void app.listen({ port: 3000, host: '0.0.0.0' });
+  const port = Number(process.env.PORT) || 3000;
+  void app.listen({ port, host: '0.0.0.0' });
 }
