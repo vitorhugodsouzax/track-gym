@@ -9,8 +9,9 @@ import { historyRoutes } from './routes/historyRoutes.js';
 
 export function buildServer() {
   const app = Fastify({ logger: true });
+  const allowedOrigin = (process.env.FRONTEND_URL ?? '').replace(/\/$/, '');
   void app.register(cors, {
-    origin: process.env.FRONTEND_URL ?? true,
+    origin: allowedOrigin || true,
     credentials: true,
   });
   app.get('/health', async () => ({ status: 'ok' }));
