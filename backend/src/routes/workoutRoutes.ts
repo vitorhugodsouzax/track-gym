@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../db.js';
 import { planInclude } from '../repositories/planQuery.js';
+import { getLatestCompletedExercisesBatch } from '../repositories/performanceHistory.js';
 
 export async function workoutRoutes(app: FastifyInstance) {
   app.get('/api/workouts', async (request) => {
@@ -13,7 +14,19 @@ export async function workoutRoutes(app: FastifyInstance) {
       },
       include: planInclude,
     });
-    return plan ? [plan] : [];
+    if (!plan) return [];
+    const exerciseIds = plan.workoutDays.flatMap((day) => day.exercises.map((exercise) => exercise.id));
+    const performances = await getLatestCompletedExercisesBatch(exerciseIds, request.user?.id);
+    return [{
+      ...plan,
+      workoutDays: plan.workoutDays.map((day) => ({
+        ...day,
+        exercises: day.exercises.map((exercise) => ({
+          ...exercise,
+          lastPerformance: performances.get(exercise.id) ?? null,
+        })),
+      })),
+    }];
   });
 
   app.get<{ Params: { dayId: string } }>('/api/workout-days/:dayId', async (request, reply) => {
