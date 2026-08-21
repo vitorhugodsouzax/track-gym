@@ -185,6 +185,16 @@ input, select {
 .choice-kicker { color: var(--accent); font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; }
 .choice-meta { color: var(--muted); font-size: 0.85rem; }
 
+.day-card-clickable {
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.day-card-clickable:hover, .day-card-clickable:focus-visible {
+  border-color: var(--accent);
+  background: var(--card-soft);
+  outline: none;
+}
+
 .day-tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
 .day-tabs button {
   flex: 0 0 auto;

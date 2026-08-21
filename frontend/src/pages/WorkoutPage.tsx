@@ -164,27 +164,40 @@ export function WorkoutPage({ onNeedPlan, onFinished }: { onNeedPlan: () => void
           <p className="eyebrow">{subtitle}</p>
           <h1>Minhas rotinas</h1>
         </header>
-        {plan.workoutDays.map((day) => (
-          <article className="log-card" key={day.id}>
-            {renamingDayId === day.id ? (
-              <div className="row-actions">
-                <input autoFocus value={renameValue} onChange={(event) => setRenameValue(event.target.value)} placeholder="Nome do treino" />
-                <button className="ghost" onClick={() => saveRename(plan.id)}>Salvar</button>
-                <button className="ghost" onClick={() => setRenamingDayId(undefined)}>Cancelar</button>
-              </div>
-            ) : (
-              <div className="row-actions">
-                <strong>{day.name}</strong>
-                <button aria-label="Renomear treino" className="icon-button" onClick={() => startRename(day)}>
-                  <PencilIcon />
-                </button>
-              </div>
-            )}
-            {renamingDayId === day.id && renameError && <p className="alert" role="alert">{renameError}</p>}
-            <p className="muted">{day.exercises.map((exercise) => exercise.name).join(', ') || 'Sem exercícios ainda.'}</p>
-            <button className="primary" onClick={() => startDay(day)} disabled={day.exercises.length === 0}>Iniciar rotina</button>
-          </article>
-        ))}
+        {plan.workoutDays.map((day) => {
+          const startable = renamingDayId !== day.id && day.exercises.length > 0;
+          return (
+            <article
+              className={`log-card day-card ${startable ? 'day-card-clickable' : ''}`}
+              key={day.id}
+              role={startable ? 'button' : undefined}
+              tabIndex={startable ? 0 : undefined}
+              onClick={() => startable && startDay(day)}
+              onKeyDown={(event) => { if (startable && (event.key === 'Enter' || event.key === ' ')) startDay(day); }}
+            >
+              {renamingDayId === day.id ? (
+                <div className="row-actions" onClick={(event) => event.stopPropagation()}>
+                  <input autoFocus value={renameValue} onChange={(event) => setRenameValue(event.target.value)} placeholder="Nome do treino" />
+                  <button className="ghost" onClick={() => saveRename(plan.id)}>Salvar</button>
+                  <button className="ghost" onClick={() => setRenamingDayId(undefined)}>Cancelar</button>
+                </div>
+              ) : (
+                <div className="row-actions">
+                  <strong>{day.name}</strong>
+                  <button
+                    aria-label="Renomear treino"
+                    className="icon-button"
+                    onClick={(event) => { event.stopPropagation(); startRename(day); }}
+                  >
+                    <PencilIcon />
+                  </button>
+                </div>
+              )}
+              {renamingDayId === day.id && renameError && <p className="alert" role="alert">{renameError}</p>}
+              <p className="muted">{day.exercises.map((exercise) => exercise.name).join(', ') || 'Sem exercícios ainda.'}</p>
+            </article>
+          );
+        })}
       </section>
     );
   }
