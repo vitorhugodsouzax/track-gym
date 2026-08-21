@@ -369,3 +369,45 @@ input, select {
 .history-search {
   width: 100%;
 }
+
+.autocomplete-field { position: relative; }
+.autocomplete-list {
+  position: absolute;
+  z-index: 6;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.autocomplete-list button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: 0;
+  color: var(--text);
+  text-align: left;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+}
+.autocomplete-list button:hover { background: rgba(59, 130, 246, 0.14); }
+.autocomplete-list .muted { font-size: 0.76rem; flex: 0 0 auto; }
+
+.video-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent);
+  font-size: 0.82rem;
+  text-decoration: none;
+}

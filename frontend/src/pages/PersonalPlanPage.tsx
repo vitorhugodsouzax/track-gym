@@ -10,8 +10,9 @@ import {
 } from '../services/api';
 import type { SetType, WorkoutDay, WorkoutPlan } from '../types/api';
 import { formatRange, SET_LABELS } from '../utils/labels';
-import { FreeWeightIcon, MachineIcon, PencilIcon } from '../components/Icons';
+import { FreeWeightIcon, MachineIcon, PencilIcon, PlayIcon } from '../components/Icons';
 import { TopBar } from '../components/TopBar';
+import { exerciseVideoSearchUrl, searchExerciseCatalog, type CatalogExercise } from '../data/exerciseCatalog';
 
 const SET_TYPES: SetType[] = ['WARMUP', 'FEEDER', 'WORKING', 'TOP_SET', 'BACK_OFF', 'REST_PAUSE'];
 
@@ -28,6 +29,8 @@ export function PersonalPlanPage({ onTrain, onBack }: { onTrain: () => void; onB
   const [sets, setSets] = useState<DraftSet[]>([emptySet()]);
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState('');
+  const [suggestions, setSuggestions] = useState<CatalogExercise[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   async function refresh() {
     const payload = await getPlans();
@@ -87,10 +90,24 @@ export function PersonalPlanPage({ onTrain, onBack }: { onTrain: () => void; onB
       });
       setName('');
       setSets([emptySet()]);
+      setSuggestions([]);
+      setShowSuggestions(false);
       await refresh();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Não foi possível salvar o exercício.');
     }
+  }
+
+  function handleNameChange(value: string) {
+    setName(value);
+    setSuggestions(searchExerciseCatalog(value));
+    setShowSuggestions(true);
+  }
+
+  function pickSuggestion(exercise: CatalogExercise) {
+    setName(exercise.name);
+    setEquipment(exercise.equipmentType);
+    setShowSuggestions(false);
   }
 
   if (!plan) {
@@ -152,10 +169,35 @@ export function PersonalPlanPage({ onTrain, onBack }: { onTrain: () => void; onB
           ))}
           <form className="composer" onSubmit={addExercise}>
             <h2>Adicionar exercício</h2>
-            <label>
+            <label className="autocomplete-field">
               Nome
-              <input value={name} onChange={(event) => setName(event.target.value)} placeholder="ex: Supino reto" required />
+              <input
+                value={name}
+                onChange={(event) => handleNameChange(event.target.value)}
+                onFocus={() => setShowSuggestions(suggestions.length > 0)}
+                onBlur={() => window.setTimeout(() => setShowSuggestions(false), 150)}
+                placeholder="ex: Supino inclinado"
+                autoComplete="off"
+                required
+              />
+              {showSuggestions && suggestions.length > 0 && (
+                <ul className="autocomplete-list">
+                  {suggestions.map((exercise) => (
+                    <li key={exercise.name}>
+                      <button type="button" onMouseDown={() => pickSuggestion(exercise)}>
+                        <span>{exercise.name}</span>
+                        <span className="muted">{exercise.muscleGroup}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </label>
+            {name.trim().length > 1 && (
+              <a className="video-link" href={exerciseVideoSearchUrl(name)} target="_blank" rel="noreferrer">
+                <PlayIcon /> Ver vídeo de "{name}"
+              </a>
+            )}
             <label>
               Equipamento
               <select value={equipment} onChange={(event) => setEquipment(event.target.value as 'FREE_WEIGHT' | 'MACHINE')}>
