@@ -1,15 +1,19 @@
 :root {
-  --bg: #0c0d0f;
-  --bg-2: #14161a;
-  --card: #171a1f;
-  --line: rgba(244, 238, 224, 0.08);
-  --text: #f3eee4;
-  --muted: #9a9388;
-  --accent: #3b82f6;
-  --accent-ink: #ffffff;
-  --danger: #ff8b7a;
-  --radius: 14px;
-  --font: "Outfit", system-ui, sans-serif;
+  --bg: #0f0d0b;
+  --bg-2: #17130f;
+  --card: #1d1815;
+  --card-soft: #251f19;
+  --line: rgba(255, 237, 220, 0.08);
+  --text: #f7f2ea;
+  --muted: #99897a;
+  --accent: #ff7a45;
+  --accent-2: #ff5a3c;
+  --accent-soft: rgba(255, 122, 69, 0.16);
+  --accent-ink: #221007;
+  --danger: #ff6b6b;
+  --radius: 16px;
+  --font-heading: "Sora", system-ui, sans-serif;
+  --font: "Manrope", system-ui, sans-serif;
   color: var(--text);
   background: var(--bg);
   font-family: var(--font);
@@ -25,8 +29,8 @@ body {
 
 button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
-h1, h2 { margin: 0; }
-h1 { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.01em; }
+h1, h2 { margin: 0; font-family: var(--font-heading); }
+h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.01em; }
 h2 { font-size: 1.05rem; font-weight: 600; }
 
 .topbar {
@@ -91,20 +95,24 @@ main {
 .alert, .status {
   padding: 12px 14px;
   border-radius: 12px;
-  background: #22181a;
+  background: #241615;
   color: var(--danger);
 }
-.status { background: #1b2414; color: var(--accent); }
+.status { background: var(--accent-soft); color: var(--accent); }
 
 .primary, .ghost, .choice-card, .day-tabs button, .auth-card button {
   border: 0;
-  border-radius: 14px;
+  border-radius: var(--radius);
+}
+.primary, .ghost {
+  border-radius: 999px;
 }
 .primary {
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
   color: var(--accent-ink);
-  font-weight: 600;
-  padding: 14px 16px;
+  font-weight: 700;
+  font-family: var(--font-heading);
+  padding: 14px 20px;
 }
 .primary:disabled, button:disabled { opacity: 0.55; }
 .ghost {
@@ -127,28 +135,32 @@ main {
   grid-template-columns: 1fr 1fr;
   gap: 6px;
   padding: 4px;
-  background: var(--bg);
-  border-radius: 12px;
-}
-.segmented button { background: transparent; border: 0; padding: 10px; border-radius: 10px; color: var(--muted); }
-.segmented .active, .day-tabs .active { background: var(--accent); color: var(--accent-ink); }
-
-.segmented-pills { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
-.segmented-pills button {
-  flex: 0 0 auto;
-  background: none;
+  background: var(--bg-2);
+  border-radius: 14px;
   border: 1px solid var(--line);
-  color: var(--muted);
-  padding: 8px 16px;
-  border-radius: 999px;
-  font-size: 0.88rem;
 }
-.segmented-pills .active { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.segmented button { background: transparent; border: 0; padding: 10px; border-radius: 10px; color: var(--muted); font-weight: 600; font-size: 0.85rem; }
+.segmented .active, .day-tabs .active { background: var(--accent-soft); color: var(--accent); }
+
+.segmented-pills { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; background: var(--bg-2); border: 1px solid var(--line); border-radius: 14px; padding: 4px; }
+.segmented-pills button {
+  flex: 1 1 0;
+  background: none;
+  border: 0;
+  color: var(--muted);
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.segmented-pills .active { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
 
 label { display: grid; gap: 6px; color: var(--muted); font-size: 0.82rem; }
 input, select {
   width: 100%;
-  background: #0f1114;
+  background: var(--bg-2);
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 12px;
@@ -159,8 +171,8 @@ input, select {
   gap: 8px;
   text-align: left;
   padding: 20px 18px;
-  background: linear-gradient(180deg, #161b24, var(--card));
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  background: linear-gradient(180deg, var(--card-soft), var(--card));
+  border: 1px solid rgba(255, 122, 69, 0.2);
   transition: all 0.3s ease;
 }
 .choice-card:hover {
@@ -195,13 +207,18 @@ input, select {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: rgba(59, 130, 246, 0.16);
+  background: var(--accent-soft);
   color: var(--accent);
   font-size: 0.75rem;
 }
-.exercise-card header h2 { color: var(--accent); }
+.exercise-card header h2 { color: var(--text); font-family: var(--font-heading); }
 .exercise-card header small, .log-card small { color: var(--muted); }
-.weight-field input { font-size: 1.35rem; font-weight: 600; }
+.weight-field input { font-size: 1.35rem; font-weight: 700; font-family: var(--font-heading); }
+
+.exercise-progress { display: flex; align-items: center; gap: 10px; }
+.exercise-progress-track { flex: 1; height: 4px; border-radius: 999px; background: var(--bg-2); overflow: hidden; }
+.exercise-progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); border-radius: 999px; transition: width 0.25s ease; }
+.exercise-progress-label { color: var(--muted); font-size: 0.78rem; font-variant-numeric: tabular-nums; }
 
 .icon-circle {
   width: 38px;
@@ -234,37 +251,41 @@ input, select {
 
 .sets-table-head {
   display: grid;
-  grid-template-columns: 1fr 64px 56px 56px 20px;
-  gap: 6px;
+  grid-template-columns: 1fr 64px 56px 56px 24px;
+  gap: 8px;
   color: var(--muted);
-  font-size: 0.68rem;
-  letter-spacing: 0.04em;
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  padding: 4px 0;
+  padding: 2px 10px;
 }
 .sets-table-row {
   display: grid;
-  grid-template-columns: 1fr 64px 56px 56px 20px;
-  gap: 6px;
+  grid-template-columns: 1fr 64px 56px 56px 24px;
+  gap: 8px;
   align-items: center;
-  padding: 6px 0;
-  border-top: 1px solid var(--line);
+  padding: 10px;
+  background: var(--card-soft);
+  border-radius: 12px;
 }
-.sets-table-row input { padding: 8px; text-align: center; }
+.sets-table-row input { padding: 8px; text-align: center; background: var(--bg-2); border-radius: 8px; }
 .sets-table-row .rest-timer { grid-column: 1 / -1; }
 .sets-table-row .row-item-trail { font-size: 0.82rem; text-align: center; }
+.sets-table-row + .sets-table-row { margin-top: 6px; }
 
 .set-check {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   display: grid;
   place-items: center;
   border-radius: 50%;
   border: 1px solid var(--line);
-  color: transparent;
-  font-size: 0.7rem;
+  background: var(--bg-2);
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
 }
-.set-check.done { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.set-check.done { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; color: var(--accent-ink); }
 
 .workout-action-bar {
   position: sticky;
@@ -274,26 +295,30 @@ input, select {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 10px 14px;
+  padding: 14px 16px;
   margin: 0 -16px;
-  background: var(--bg-2);
-  border-bottom: 1px solid var(--line);
-  font-weight: 600;
+  background: var(--bg);
 }
-.workout-action-bar .primary.compact { padding: 8px 16px; font-size: 0.85rem; }
+.workout-action-bar-title { flex: 1; display: grid; gap: 2px; min-width: 0; }
+.workout-action-bar-title h1 { font-size: 1.3rem; }
+.workout-action-bar .primary.compact { padding: 10px 18px; font-size: 0.85rem; }
 
 .stats-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
+}
+.stats-row div {
+  display: grid;
+  gap: 2px;
+  text-align: center;
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 12px;
+  border-radius: 14px;
+  padding: 12px 8px;
 }
-.stats-row div { display: grid; gap: 2px; text-align: center; }
-.stats-row strong { font-size: 1.1rem; }
-.stats-row span { color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.stats-row strong { font-size: 1.15rem; font-family: var(--font-heading); }
+.stats-row span { color: var(--muted); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; }
 
 .workout-timer {
   display: inline-flex;
@@ -328,8 +353,8 @@ input, select {
   width: 100%;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  padding: 6px max(0px, env(safe-area-inset-bottom)) 6px 0;
-  background: rgba(12, 13, 15, 0.94);
+  padding: 8px max(0px, env(safe-area-inset-bottom)) 8px 0;
+  background: rgba(15, 13, 11, 0.92);
   border-top: 1px solid var(--line);
   backdrop-filter: blur(16px);
 }
@@ -337,13 +362,20 @@ input, select {
   background: transparent;
   border: 0;
   color: var(--muted);
-  font-size: 0.68rem;
-  padding: 8px 4px 10px;
+  font-size: 0.66rem;
+  font-weight: 600;
+  padding: 6px 4px;
   display: grid;
   place-items: center;
-  gap: 3px;
+  gap: 4px;
+}
+.bottom-nav button svg {
+  padding: 6px;
+  border-radius: 999px;
+  box-sizing: content-box;
 }
 .bottom-nav .active { color: var(--accent); }
+.bottom-nav .active svg { background: var(--accent-soft); }
 
 @media (max-width: 380px) {
   .composer-set { grid-template-columns: 1fr 1fr; }
@@ -400,8 +432,37 @@ input, select {
   border-radius: 8px;
   font-size: 0.88rem;
 }
-.autocomplete-list button:hover { background: rgba(59, 130, 246, 0.14); }
+.autocomplete-list button:hover { background: var(--accent-soft); }
 .autocomplete-list .muted { font-size: 0.76rem; flex: 0 0 auto; }
+
+.volume-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+}
+.volume-card-figure { display: grid; gap: 4px; }
+.volume-card-figure strong { font-size: 1.9rem; font-family: var(--font-heading); }
+.volume-card-delta { font-size: 0.8rem; font-weight: 700; }
+.volume-card-delta.up { color: #7ed58a; }
+.volume-card-delta.down { color: var(--danger); }
+
+.session-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+.session-row-body { display: grid; gap: 2px; }
+.session-row-meta { color: var(--muted); font-size: 0.82rem; }
 
 .video-link {
   display: inline-flex;

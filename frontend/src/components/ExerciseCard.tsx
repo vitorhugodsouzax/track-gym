@@ -150,6 +150,12 @@ export function ExerciseCard({ exercise, onChange }: { exercise: Exercise; onCha
 
   const lastWorkingText = formatLastWorking(exercise.lastPerformance);
 
+  const totalSets = exercise.setTemplates.length;
+  const doneSets = exercise.setTemplates.filter((set, index) => {
+    const acceptsReps = set.type === 'WORKING' || set.type === 'REST_PAUSE';
+    return acceptsReps ? values[index]?.completedReps !== undefined : values[index]?.actualWeight !== undefined;
+  }).length;
+
   return (
     <article className="exercise-card">
       <header>
@@ -227,6 +233,12 @@ export function ExerciseCard({ exercise, onChange }: { exercise: Exercise; onCha
           </div>
         );
       })}
+      <div className="exercise-progress">
+        <div className="exercise-progress-track">
+          <div className="exercise-progress-fill" style={{ width: `${totalSets ? (doneSets / totalSets) * 100 : 0}%` }} />
+        </div>
+        <span className="exercise-progress-label">{doneSets}/{totalSets}</span>
+      </div>
     </article>
   );
 }

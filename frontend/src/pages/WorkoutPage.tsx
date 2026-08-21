@@ -195,10 +195,12 @@ export function WorkoutPage({ onNeedPlan, onFinished }: { onNeedPlan: () => void
         <button aria-label="Voltar" className="icon-button" onClick={backToList}>
           <ChevronLeftIcon />
         </button>
-        <span>{selected.name}</span>
-        <span className="workout-timer"><ClockIcon /> {formatElapsed(elapsedSeconds)}</span>
+        <div className="workout-action-bar-title">
+          <span className="workout-timer"><ClockIcon /> {formatElapsed(elapsedSeconds)}</span>
+          <h1>{selected.name}</h1>
+        </div>
         <button className="primary compact" disabled={busy} onClick={finish}>
-          {busy ? 'Salvando…' : 'Concluir'}
+          {busy ? 'Salvando…' : 'Finalizar'}
         </button>
       </header>
       <div className="stats-row">

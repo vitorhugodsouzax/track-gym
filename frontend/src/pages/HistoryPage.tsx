@@ -21,6 +21,40 @@ function statusLabel(status: ExerciseStatus, detail: string | null) {
   return 'Sem histórico ainda';
 }
 
+function sessionVolume(session: WorkoutSessionRecord) {
+  let volume = 0;
+  let sets = 0;
+  for (const exercise of session.exercises) {
+    for (const set of exercise.sets) {
+      if (set.completedReps === null) continue;
+      const weight = set.actualWeight ?? set.plannedWeight ?? 0;
+      volume += weight * set.completedReps;
+      sets += 1;
+    }
+  }
+  return { volume, sets };
+}
+
+function formatTonnes(kg: number) {
+  return kg >= 1000 ? `${(kg / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}t` : `${kg.toLocaleString('pt-BR')} kg`;
+}
+
+function weeklyVolumeSummary(sessions: WorkoutSessionRecord[]) {
+  const now = Date.now();
+  const week = 7 * 24 * 60 * 60 * 1000;
+  let current = 0;
+  let previous = 0;
+  for (const session of sessions) {
+    const age = now - new Date(session.performedAt).getTime();
+    if (age < 0) continue;
+    const { volume } = sessionVolume(session);
+    if (age <= week) current += volume;
+    else if (age <= week * 2) previous += volume;
+  }
+  const deltaPct = previous > 0 ? ((current - previous) / previous) * 100 : null;
+  return { current, deltaPct };
+}
+
 export function HistoryPage() {
   const [mode, setMode] = useState<ViewMode>('exercise');
   const [groups, setGroups] = useState<HistoryDayGroup[]>([]);
@@ -29,6 +63,7 @@ export function HistoryPage() {
   const [openExercise, setOpenExercise] = useState<{ id: string; name: string }>();
   const [detail, setDetail] = useState<ExerciseHistoryEntry[]>([]);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string>();
+  const [expandedSessionId, setExpandedSessionId] = useState<string>();
 
   useEffect(() => {
     getHistoryExercises().then(setGroups).catch(() => setGroups([]));
@@ -73,12 +108,28 @@ export function HistoryPage() {
     );
   }
 
+  const weekly = weeklyVolumeSummary(sessions);
+
   return (
     <section className="stack">
       <header className="page-hero">
-        <p className="eyebrow">Evolução</p>
+        <p className="eyebrow">Últimas sessões</p>
         <h1>Histórico</h1>
       </header>
+      {sessions.length > 0 && (
+        <div className="volume-card">
+          <div className="volume-card-figure">
+            <span className="eyebrow">Volume semanal</span>
+            <strong>{formatTonnes(weekly.current)}</strong>
+            {weekly.deltaPct !== null && (
+              <span className={`volume-card-delta ${weekly.deltaPct >= 0 ? 'up' : 'down'}`}>
+                {weekly.deltaPct >= 0 ? '+' : ''}{weekly.deltaPct.toFixed(1)}% vs. semana anterior
+              </span>
+            )}
+          </div>
+          <Sparkline values={sessions.slice(0, 8).map((session) => sessionVolume(session).volume).reverse()} />
+        </div>
+      )}
       <Segmented options={MODE_OPTIONS} value={mode} onChange={setMode} />
       {mode === 'exercise' ? (
         <>
@@ -107,34 +158,41 @@ export function HistoryPage() {
           ))}
         </>
       ) : (
-        sessions.length === 0 ? <p className="muted">Nenhum treino concluído ainda.</p> : sessions.map((session) => (
-          <article className="log-card" key={session.id}>
-            <header>
-              <h2>{session.workoutDay.name}</h2>
-              <small>{new Date(session.performedAt).toLocaleDateString('pt-BR')}</small>
-              <button aria-label="Excluir sessão" className="icon-button" onClick={() => setConfirmingDeleteId(session.id)}>
-                <TrashIcon />
-              </button>
-            </header>
-            {confirmingDeleteId === session.id && (
-              <div className="row-actions">
-                <span className="muted">Excluir esta sessão? Não pode ser desfeito.</span>
-                <button className="danger-link" onClick={() => removeSession(session.id)}>Excluir</button>
-                <button className="ghost" onClick={() => setConfirmingDeleteId(undefined)}>Cancelar</button>
+        sessions.length === 0 ? <p className="muted">Nenhum treino concluído ainda.</p> : sessions.map((session) => {
+          const { volume, sets } = sessionVolume(session);
+          const expanded = expandedSessionId === session.id;
+          return (
+            <div className="stack" key={session.id} style={{ gap: 8 }}>
+              <div className="session-row" role="button" tabIndex={0} onClick={() => setExpandedSessionId(expanded ? undefined : session.id)}>
+                <div className="session-row-body">
+                  <small>{new Date(session.performedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</small>
+                  <strong>{session.workoutDay.name}</strong>
+                  <span className="session-row-meta">{formatTonnes(volume)} · {sets} séries</span>
+                </div>
+                <button aria-label="Excluir sessão" className="icon-button" onClick={(event) => { event.stopPropagation(); setConfirmingDeleteId(session.id); }}>
+                  <TrashIcon />
+                </button>
               </div>
-            )}
-            {session.exercises.map((exercise) => (
-              <div className="log-exercise" key={exercise.id}>
-                <strong>{exercise.nameSnapshot}</strong>
-                {exercise.sets.map((set) => (
-                  <p key={set.id}>
-                    {SET_LABELS[set.type]}: {set.actualWeight ?? set.plannedWeight ?? '—'} kg × {set.completedReps ?? formatRange(set.repRangeMin, set.repRangeMax)}
-                  </p>
-                ))}
-              </div>
-            ))}
-          </article>
-        ))
+              {confirmingDeleteId === session.id && (
+                <div className="row-actions">
+                  <span className="muted">Excluir esta sessão? Não pode ser desfeito.</span>
+                  <button className="danger-link" onClick={() => removeSession(session.id)}>Excluir</button>
+                  <button className="ghost" onClick={() => setConfirmingDeleteId(undefined)}>Cancelar</button>
+                </div>
+              )}
+              {expanded && session.exercises.map((exercise) => (
+                <div className="log-exercise" key={exercise.id}>
+                  <strong>{exercise.nameSnapshot}</strong>
+                  {exercise.sets.map((set) => (
+                    <p key={set.id}>
+                      {SET_LABELS[set.type]}: {set.actualWeight ?? set.plannedWeight ?? '—'} kg × {set.completedReps ?? formatRange(set.repRangeMin, set.repRangeMax)}
+                    </p>
+                  ))}
+                </div>
+              ))}
+            </div>
+          );
+        })
       )}
     </section>
   );
