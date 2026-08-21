@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ExerciseCard, type ExerciseDraft } from '../components/ExerciseCard';
 import { ChevronLeftIcon, ClockIcon, PencilIcon } from '../components/Icons';
+import { TopBar } from '../components/TopBar';
 import { completeSession, getWorkouts, renameDay } from '../services/api';
-import type { WorkoutDay, WorkoutPlan, WorkoutSessionRecord } from '../types/api';
+import type { Exercise, WorkoutDay, WorkoutPlan, WorkoutSessionRecord } from '../types/api';
 
 const TIMER_KEY = 'memento-mori-workout-start';
 
@@ -10,6 +11,12 @@ function formatElapsed(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
   const seconds = Math.floor(totalSeconds % 60).toString().padStart(2, '0');
   return `${minutes}:${seconds}`;
+}
+
+function previewSetsSummary(exercise: Exercise) {
+  const working = exercise.setTemplates.filter((set) => set.type === 'WORKING' || set.type === 'TOP_SET' || set.type === 'BACK_OFF');
+  if (working.length === 0) return `${exercise.setTemplates.length} séries`;
+  return `${exercise.setTemplates.length}x · ${working[0].repRangeMin}-${working[0].repRangeMax} reps`;
 }
 
 function exerciseStatusLabel(exercise: WorkoutSessionRecord['exercises'][number]) {
@@ -21,6 +28,7 @@ function exerciseStatusLabel(exercise: WorkoutSessionRecord['exercises'][number]
 export function WorkoutPage({ onNeedPlan, onFinished }: { onNeedPlan: () => void; onFinished: () => void }) {
   const [plan, setPlan] = useState<WorkoutPlan>();
   const [selected, setSelected] = useState<WorkoutDay>();
+  const [previewing, setPreviewing] = useState<WorkoutDay>();
   const [error, setError] = useState('');
   const [drafts, setDrafts] = useState<Record<string, ExerciseDraft>>({});
   const [summary, setSummary] = useState<WorkoutSessionRecord>();
@@ -58,6 +66,7 @@ export function WorkoutPage({ onNeedPlan, onFinished }: { onNeedPlan: () => void
   function startDay(day: WorkoutDay) {
     setDrafts({});
     setSelected(day);
+    setPreviewing(undefined);
   }
 
   function backToList() {
@@ -157,6 +166,24 @@ export function WorkoutPage({ onNeedPlan, onFinished }: { onNeedPlan: () => void
     }
   }
 
+  if (previewing) {
+    return (
+      <section className="stack">
+        <TopBar title={previewing.name} onBack={() => setPreviewing(undefined)} />
+        {previewing.exercises.length === 0 && <p className="muted">Sem exercícios ainda.</p>}
+        {previewing.exercises.map((exercise) => (
+          <div className="summary-row" key={exercise.id}>
+            <strong>{exercise.name}</strong>
+            <span className="muted">{previewSetsSummary(exercise)}</span>
+          </div>
+        ))}
+        <button className="primary" onClick={() => startDay(previewing)} disabled={previewing.exercises.length === 0}>
+          Iniciar treino
+        </button>
+      </section>
+    );
+  }
+
   if (!selected) {
     return (
       <section className="stack">
@@ -165,15 +192,15 @@ export function WorkoutPage({ onNeedPlan, onFinished }: { onNeedPlan: () => void
           <h1>Minhas rotinas</h1>
         </header>
         {plan.workoutDays.map((day) => {
-          const startable = renamingDayId !== day.id && day.exercises.length > 0;
+          const viewable = renamingDayId !== day.id;
           return (
             <article
-              className={`log-card day-card ${startable ? 'day-card-clickable' : ''}`}
+              className={`log-card day-card ${viewable ? 'day-card-clickable' : ''}`}
               key={day.id}
-              role={startable ? 'button' : undefined}
-              tabIndex={startable ? 0 : undefined}
-              onClick={() => startable && startDay(day)}
-              onKeyDown={(event) => { if (startable && (event.key === 'Enter' || event.key === ' ')) startDay(day); }}
+              role={viewable ? 'button' : undefined}
+              tabIndex={viewable ? 0 : undefined}
+              onClick={() => viewable && setPreviewing(day)}
+              onKeyDown={(event) => { if (viewable && (event.key === 'Enter' || event.key === ' ')) setPreviewing(day); }}
             >
               {renamingDayId === day.id ? (
                 <div className="row-actions" onClick={(event) => event.stopPropagation()}>
